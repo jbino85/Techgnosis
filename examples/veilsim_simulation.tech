@@ -1,0 +1,224 @@
+// VeilSim Example Simulation
+// Execute a 100-step simulation with 5 robots using Veils 1, 26, 101
+// Crown Architect: Bínò ÈL Guà Ọmọ Kọ́dà Àṣẹ
+
+@simulation(
+    name: "multi_robot_veil_stack",
+    version: "1.0",
+    timestamp: "2025-11-11T11:11:11.11Z"
+) {
+    
+    // ====================================================================
+    // SETUP: 5 Robots with PID + Gradient Descent + Forward Kinematics
+    // ====================================================================
+    
+    @environment {
+        gravity: [0.0, -9.81, 0.0];
+        air_density: 1.225;
+        wind: [0.0, 0.0, 0.0];
+        temperature: 293.15;  // 20°C
+    }
+    
+    @for i in 1..5 {
+        @createEntity robot_{i} {
+            type: "robot";
+            mass: 10.0 + (i - 1) * 2.0;  // 10, 12, 14, 16, 18 kg
+            
+            // Veil Stack
+            @attachVeil 1 {  // PID Controller
+                Kp: 1.0;
+                Ki: 0.1;
+                Kd: 0.01;
+                target: 5.0 + i;  // Target positions differ
+            }
+            
+            @attachVeil 26 {  // Gradient Descent
+                alpha: 0.01;
+                momentum: 0.9;
+            }
+            
+            @attachVeil 101 {  // Forward Kinematics
+                dh_params: [[0, 0, 0, 0]];
+                joint_angles: [0.0, 0.0, 0.0];
+            }
+            
+            properties: {
+                name: "RobotUnit_{i}",
+                team: "alpha"
+            }
+        }
+    }
+    
+    // ====================================================================
+    // EXECUTION: Batch 100 steps
+    // ====================================================================
+    
+    @batchRun {
+        steps: 100;
+        timestep: 0.01;  // 10ms per step
+        mode: "fast-forward";
+        snapshot_interval: 10;  // Save every 10 steps
+    }
+    
+    // ====================================================================
+    // METRICS COLLECTION
+    // ====================================================================
+    
+    @metricsCollection {
+        track: [
+            "f1_score",
+            "energy_efficiency",
+            "convergence_rate",
+            "robustness_score"
+        ];
+        
+        compute_pareto: true;  // Multi-objective optimization
+        export_trajectory: "csv";
+    }
+    
+    // ====================================================================
+    // MINTING & REWARDS
+    // ====================================================================
+    
+    @onCompletion {
+        @compute final_metrics = mean(all_timestep_metrics);
+        
+        if (final_metrics.f1_score >= 0.9) {
+            @mint 5.0 Àṣẹ to simulation_executor;
+            
+            // Distribute to 1440 inheritance wallets (proportional)
+            @distribute 0.25 * reward to inheritance_wallets[*];
+            
+            @emit SimulationMint(
+                sim_id: "multi_robot_veil_stack",
+                f1_score: final_metrics.f1_score,
+                executor: simulation_executor,
+                timestamp: now()
+            );
+        }
+        
+        // Always archive
+        @snapshot {
+            format: "json";
+            include: ["entities", "metrics", "trajectory"];
+            chains: ["Bitcoin", "Arweave", "Ethereum", "Sui"];
+        }
+    }
+}
+
+
+// ========================================================================
+// Advanced Example: Parameter Sweep with Optimization
+// ========================================================================
+
+@parameterSweep(
+    name: "pid_tuning_optimization",
+    objective: "maximize f1_score"
+) {
+    
+    @defineSpace {
+        Kp: [0.1, 10.0, "log"];  // Log-uniform distribution
+        Ki: [0.01, 1.0, "log"];
+        Kd: [0.001, 0.1, "log"];
+    }
+    
+    @samplingStrategy {
+        method: "bayesian_optimization";
+        acquisitions: "ucb";
+        n_iterations: 50;
+    }
+    
+    @forEachSample (Kp, Ki, Kd) {
+        @createEntity test_robot {
+            type: "robot";
+            mass: 5.0;
+            
+            @attachVeil 1 {  // PID with sampled parameters
+                Kp: Kp;
+                Ki: Ki;
+                Kd: Kd;
+                target: 5.0;
+            }
+        }
+        
+        @run 50 steps;
+        @evaluate f1_score;
+        
+        @log {
+            iteration: current_iteration;
+            parameters: {Kp: Kp, Ki: Ki, Kd: Kd};
+            result: f1_score;
+        }
+    }
+    
+    @onOptimizationComplete {
+        @emit OptimalParameters(
+            best_Kp: best_sample.Kp,
+            best_Ki: best_sample.Ki,
+            best_Kd: best_sample.Kd,
+            best_f1: best_score
+        );
+        
+        // Mint bonus for discovery
+        @mint 10.0 Àṣẹ to optimizer;
+    }
+}
+
+
+// ========================================================================
+// Multi-Agent Coordination Example (7x7 Pilgrimage Model)
+// ========================================================================
+
+@multiAgentSimulation(
+    name: "seven_by_seven_swarm",
+    agents: 49,  // 7×7 grid
+    phases: 7,
+    steps_per_phase: 7
+) {
+    
+    // Phase 0: Breath (Initialization)
+    @phase 0 "breath" {
+        description: "Initialize 49 agents in 7×7 grid formation";
+        
+        @for i in 1..49 {
+            @createAgent agent_{i} {
+                position: [i % 7, i / 7, 0];
+                veils: [1];  // PID for flocking
+            }
+        }
+    }
+    
+    // Phases 1-6: Progressive coordination
+    @for phase in 1..6 {
+        @phase phase "pilgrimage_phase_{phase}" {
+            @allAgents {
+                @executeVeils();
+                @communicate(neighbors: "8-neighborhood");
+                @syncMetrics();
+            }
+            
+            // Check convergence
+            @if convergence_metric > 0.95 {
+                @accelerateTime(multiplier: 2.0);
+            }
+        }
+    }
+    
+    // Phase 7: Final Seal (Verification)
+    @phase 7 "final_seal" {
+        @verifyFormation {
+            target: "concentric_circles";
+            tolerance: 0.1;
+        }
+        
+        @if formation_valid {
+            @emit PilgrimageComplete(
+                agents: 49,
+                formation: "valid",
+                f1_score: final_metrics.f1_score
+            );
+            
+            @mint 7.0 Àṣẹ per agent to participating_wallets;
+        }
+    }
+}

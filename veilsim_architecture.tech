@@ -1,0 +1,258 @@
+// VeilSim Studio — OSOVM Simulation Subsystem
+// Unified simulation engine for all 777 Veils
+// Crown Architect: Bínò ÈL Guà Ọmọ Kọ́dà Àṣẹ
+// Genesis: November 11, 2025, 11:11:11.11 UTC
+
+@veilsimArch(
+    version: "1.0.0",
+    timestamp: "2025-11-11T11:11:11.11Z",
+    subsystem: "simulation",
+    author: "Ọbàtálá",
+    flaw: "Ase"
+) {
+    
+    // ========================================================================
+    // 1. VEILSIM CORE — The Simulation Runtime
+    // ========================================================================
+    
+    @module SimulationKernel {
+        description: "Core runtime engine for 777 Veils execution";
+        
+        // Execution model
+        @opcode 0x40 (VEIL_INIT) {
+            inputs: {veil_id: u16, parameters: Map<String, f64>};
+            outputs: {state: VeilState, token: u128};
+            effect: "Initialize veil with parameters and return state token";
+        }
+        
+        @opcode 0x41 (VEIL_STEP) {
+            inputs: {token: u128, delta_time: f64, input_data: Map<String, Any>};
+            outputs: {output_data: Map<String, Any>, metrics: SimMetrics};
+            effect: "Execute one simulation step (dt) on veil";
+        }
+        
+        @opcode 0x42 (VEIL_BATCH) {
+            inputs: {token: u128, steps: u32, batch_config: BatchConfig};
+            outputs: {trajectory: Trajectory, final_metrics: SimMetrics};
+            effect: "Execute batch of simulation steps (N steps)";
+        }
+        
+        @opcode 0x43 (ENTITY_ADD) {
+            inputs: {sim_id: String, entity_type: String, veils: Vec<u16>};
+            outputs: {entity_id: String, status: String};
+            effect: "Add physics entity to simulation with veil stack";
+        }
+        
+        @opcode 0x44 (ENTITY_REMOVE) {
+            inputs: {sim_id: String, entity_id: String};
+            outputs: {status: String, final_state: EntitySnapshot};
+            effect: "Remove entity and archive its state";
+        }
+        
+        @opcode 0x45 (SIM_PHYSICS) {
+            inputs: {sim_id: String, timestep: f64, gravity: Vec3, damping: f64};
+            outputs: {entity_states: Vec<EntityState>, energy: f64};
+            effect: "Update physics simulation (gravity, collisions, forces)";
+        }
+    }
+    
+    // ========================================================================
+    // 2. ENTITY MODEL — Simulation Objects + Veil Stacks
+    // ========================================================================
+    
+    @dataModel Entity {
+        id: String;                    // "entity_001"
+        type: String;                  // "robot", "drone", "sensor", "actuator"
+        position: Vec3;                // [x, y, z]
+        velocity: Vec3;                // [vx, vy, vz]
+        rotation: Quaternion;          // [w, x, y, z]
+        mass: f64;                     // kg
+        veils: Vec<VeilInstance>;      // Stack of active veils
+        properties: Map<String, Any>;  // Custom metadata
+        state: EntityState;            // Current computed state
+    }
+    
+    @dataModel VeilInstance {
+        veil_id: u16;                  // Reference to 777 Veils database
+        parameters: Map<String, f64>;  // Runtime parameters
+        state: VeilState;              // Veil-specific state (e.g., PID error integral)
+        input_connectors: Vec<String>; // ["position", "velocity"]
+        output_connectors: Vec<String>;// ["force", "torque"]
+        enabled: bool;
+    }
+    
+    @dataModel EntityState {
+        kinetic_energy: f64;
+        potential_energy: f64;
+        total_force: Vec3;
+        total_torque: Vec3;
+        acceleration: Vec3;
+        angular_velocity: Vec3;
+        health: f64;                   // 0-1 for entity degradation
+        timestamp: DateTime;
+    }
+    
+    // ========================================================================
+    // 3. VEIL EXECUTION PIPELINES
+    // ========================================================================
+    
+    @pipeline VeilComputationPipeline {
+        stage: "input_sampling" {
+            description: "Sample entity state at current timestep";
+            outputs: {sampled_state: EntityState, timestamp: DateTime};
+        }
+        
+        stage: "veil_cascade" {
+            description: "Execute veil stack sequentially (each veil reads prior output)";
+            for: "each veil in entity.veils" {
+                @call veil_step(veil, sampled_state, delta_time);
+                // Update inputs for next veil
+            }
+            outputs: {cascaded_outputs: Vec<Map<String, Any>>};
+        }
+        
+        stage: "force_aggregation" {
+            description: "Sum forces/torques from all veils";
+            outputs: {total_force: Vec3, total_torque: Vec3};
+        }
+        
+        stage: "physics_integration" {
+            description: "Apply forces via Runge-Kutta 4th order ODE solver";
+            uses: "Julia differential_equations.jl";
+            outputs: {new_position: Vec3, new_velocity: Vec3};
+        }
+        
+        stage: "metrics_accumulation" {
+            description: "Collect F1 scores, energy, accuracy";
+            outputs: {metrics: SimMetrics, rewards: Map<String, f64>};
+        }
+    }
+    
+    // ========================================================================
+    // 4. SIMULATION CONTEXTS — Multi-Tier Execution
+    // ========================================================================
+    
+    @context SingleStepContext {
+        duration: 1 * delta_time;
+        mode: "real-time";             // 60 FPS target
+        physics_solver: "euler";       // Fast
+        veil_accuracy: "approximate";
+        minting: false;
+    }
+    
+    @context BatchContext {
+        duration: "user-defined";
+        mode: "fast-forward";           // 1000x speedup
+        physics_solver: "rk4";          // Accurate
+        veil_accuracy: "full";
+        minting: true;                  // F1 score → Àṣẹ rewards
+    }
+    
+    @context OptimizationContext {
+        duration: "unbounded";
+        mode: "discovery";              // Search parameter space
+        physics_solver: "rk8";          // Ultra-accurate
+        veil_accuracy: "symbolic";      // Exact computation
+        minting: true;
+    }
+    
+    // ========================================================================
+    // 5. METRIC SCORING & MINTING
+    // ========================================================================
+    
+    @dataModel SimMetrics {
+        f1_score: f64;                  // 0-1: veil accuracy
+        energy_efficiency: f64;         // 0-1: power / work
+        convergence_rate: f64;          // 0-1: how fast optimal reached
+        robustness_score: f64;          // 0-1: noise tolerance
+        latency_ms: f64;
+        throughput_vps: f64;            // veils per second
+    }
+    
+    @contract VeilScoring {
+        if: metrics.f1_score >= 0.9 && execution_context == "BatchContext" {
+            @mint 5.0 Àṣẹ to executor_wallet;
+            @emit VeilScoringMint(
+                veil_id: veil.id,
+                f1_score: metrics.f1_score,
+                reward: 5.0,
+                timestamp: now()
+            );
+        }
+    }
+    
+    // ========================================================================
+    // 6. ASSET PERSISTENCE & ANCHORING
+    // ========================================================================
+    
+    @opcode 0x46 (SIM_SNAPSHOT) {
+        inputs: {sim_id: String};
+        outputs: {snapshot: SimulationSnapshot, hash: Bytes32};
+        effect: "Create immutable snapshot of current simulation state";
+    }
+    
+    @opcode 0x47 (ANCHOR_RESULT) {
+        inputs: {sim_id: String, metrics: SimMetrics, chains: Vec<String>};
+        outputs: {anchors: Map<String, String>, receipt: String};
+        effect: "Anchor simulation results to 4 chains (Bitcoin, Arweave, Ethereum, Sui)";
+    }
+    
+    @dataModel SimulationSnapshot {
+        sim_id: String;
+        timestamp: DateTime;
+        entities: Vec<Entity>;
+        metrics: SimMetrics;
+        energy_consumed: f64;
+        data_hash: Bytes32;
+        merkle_proof: String;
+    }
+    
+    // ========================================================================
+    // 7. ENVIRONMENT & WORLD STATE
+    // ========================================================================
+    
+    @dataModel Environment {
+        gravity: Vec3;                  // [0, -9.81, 0] m/s²
+        air_density: f64;               // kg/m³
+        wind: Vec3;                     // Global wind vector
+        temperature: f64;               // K
+        electromagnetic_field: f64;     // Tesla
+        obstacles: Vec<Obstacle>;
+        lights: Vec<Light>;
+    }
+    
+    @dataModel Obstacle {
+        id: String;
+        position: Vec3;
+        geometry: String;               // "box", "sphere", "mesh"
+        collision_mask: u32;
+    }
+    
+    // ========================================================================
+    // 8. SIMULATION LIFECYCLE
+    // ========================================================================
+    
+    @contract SimulationLifecycle {
+        state: enum { INIT, RUNNING, PAUSED, STOPPED, ARCHIVED }
+        
+        transition: INIT -> RUNNING {
+            condition: @veilsimInit(environment, entities, veils);
+            action: @emit SimulationStarted(sim_id);
+        }
+        
+        transition: RUNNING -> PAUSED {
+            condition: user_pause || out_of_resources;
+            action: @snapshot();
+        }
+        
+        transition: RUNNING -> STOPPED {
+            condition: time_expired || all_entities_inactive;
+            action: @anchorResults();
+        }
+        
+        transition: STOPPED -> ARCHIVED {
+            condition: snapshot_verified;
+            action: @emit SimulationArchived(sim_id, hash);
+        }
+    }
+}

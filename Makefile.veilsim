@@ -1,0 +1,299 @@
+# VeilSim Studio — OSOVM Simulation Ecosystem Build System
+# Crown Architect: Bínò ÈL Guà Ọmọ Kọ́dà Àṣẹ
+
+.PHONY: help all clean build test veilsim julia rust backend frontend docker deploy
+
+# ============================================================================
+# BUILD CONFIGURATION
+# ============================================================================
+
+JULIA := julia
+CARGO := cargo
+PYTHON := python3
+NPM := npm
+DOCKER := docker
+
+VEILSIM_VERSION := 1.0.0
+GENESIS_TIME := 2025-11-11T11:11:11.11Z
+
+# Directories
+SRC_DIR := src
+FFI_DIR := ffi
+EXAMPLES_DIR := examples
+BACKEND_DIR := backend
+FRONTEND_DIR := frontend
+
+# Output
+BUILD_DIR := build
+DIST_DIR := dist
+
+# ============================================================================
+# HELP
+# ============================================================================
+
+help:
+	@echo "🤍🗿⚖️🕊️🌄 VeilSim Studio — OSOVM Build System"
+	@echo ""
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Core Targets:"
+	@echo "  all                  Build entire VeilSim ecosystem"
+	@echo "  veilsim              Build Julia + Rust + .tech compiler"
+	@echo "  julia                Build Julia veilsim_engine module"
+	@echo "  rust                 Build Rust FFI bridge (C ABI)"
+	@echo "  backend              Build FastAPI backend"
+	@echo "  frontend             Build React frontend"
+	@echo "  test                 Run all tests"
+	@echo "  docker               Build Docker image"
+	@echo "  deploy               Deploy to Kubernetes"
+	@echo "  clean                Remove build artifacts"
+	@echo ""
+	@echo "Utilities:"
+	@echo "  check-env            Verify build environment"
+	@echo "  genesis-init         Initialize Genesis handshake"
+	@echo "  veil-index           Generate 777 Veil index"
+	@echo "  docs                 Generate documentation"
+	@echo ""
+
+# ============================================================================
+# ENVIRONMENT CHECK
+# ============================================================================
+
+check-env:
+	@echo "Checking build environment..."
+	@command -v $(JULIA) >/dev/null 2>&1 || (echo "❌ Julia not found" && exit 1)
+	@command -v $(CARGO) >/dev/null 2>&1 || (echo "❌ Cargo not found" && exit 1)
+	@command -v $(PYTHON) >/dev/null 2>&1 || (echo "❌ Python not found" && exit 1)
+	@command -v $(NPM) >/dev/null 2>&1 || (echo "❌ NPM not found" && exit 1)
+	@echo "✅ All dependencies found"
+
+# ============================================================================
+# JULIA BUILD
+# ============================================================================
+
+julia: check-env
+	@echo "📦 Building Julia VeilSim Engine..."
+	@mkdir -p $(BUILD_DIR)
+	$(JULIA) --project=$(SRC_DIR) -e "using Pkg; Pkg.instantiate()"
+	$(JULIA) --project=$(SRC_DIR) -e "include(\"$(SRC_DIR)/veilsim_engine.jl\")"
+	@echo "✅ Julia build complete"
+
+julia-test:
+	@echo "🧪 Running Julia tests..."
+	$(JULIA) --project=$(SRC_DIR) -e "using Pkg; Pkg.test()"
+
+# ============================================================================
+# RUST BUILD
+# ============================================================================
+
+rust: check-env
+	@echo "🦀 Building Rust FFI Bridge..."
+	cd $(FFI_DIR) && $(CARGO) build --release
+	@mkdir -p $(BUILD_DIR)/lib
+	@cp $(FFI_DIR)/target/release/libveilsim_ffi.{so,dylib,dll} $(BUILD_DIR)/lib/ 2>/dev/null || true
+	@echo "✅ Rust build complete"
+
+rust-test:
+	@echo "🧪 Running Rust tests..."
+	cd $(FFI_DIR) && $(CARGO) test --release
+
+# ============================================================================
+# BACKEND BUILD
+# ============================================================================
+
+backend: check-env
+	@echo "🐍 Setting up FastAPI Backend..."
+	cd $(BACKEND_DIR) && $(PYTHON) -m pip install -r requirements.txt
+	@echo "✅ Backend dependencies installed"
+
+backend-test:
+	@echo "🧪 Running backend tests..."
+	cd $(BACKEND_DIR) && $(PYTHON) -m pytest tests/
+
+backend-run:
+	@echo "▶️  Starting backend server..."
+	cd $(BACKEND_DIR) && uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+
+# ============================================================================
+# FRONTEND BUILD
+# ============================================================================
+
+frontend: check-env
+	@echo "📱 Building React Frontend..."
+	cd $(FRONTEND_DIR) && $(NPM) install
+	cd $(FRONTEND_DIR) && $(NPM) run build
+	@echo "✅ Frontend build complete"
+
+frontend-dev:
+	@echo "🎨 Starting frontend dev server..."
+	cd $(FRONTEND_DIR) && $(NPM) start
+
+frontend-test:
+	@echo "🧪 Running frontend tests..."
+	cd $(FRONTEND_DIR) && $(NPM) test
+
+# ============================================================================
+# CORE VEILSIM BUILD
+# ============================================================================
+
+veilsim: julia rust
+	@echo "🤍 VeilSim Core Build"
+	@mkdir -p $(DIST_DIR)
+	@echo "✅ VeilSim core built successfully"
+
+# ============================================================================
+# COMPILATION & CODEGEN
+# ============================================================================
+
+compile-tech:
+	@echo "🔨 Compiling .tech specifications..."
+	$(JULIA) --project=$(SRC_DIR) -e "include(\"$(SRC_DIR)/techgnos_compiler.jl\")"
+	@echo "✅ .tech compilation complete"
+
+index-veils:
+	@echo "📚 Generating 777 Veil Index..."
+	$(JULIA) --project=$(SRC_DIR) -e "include(\"$(SRC_DIR)/veil_index.jl\")"
+	@cp $(SRC_DIR)/veil_index.json $(DIST_DIR)/
+	@echo "✅ Veil index generated"
+
+# ============================================================================
+# TESTING
+# ============================================================================
+
+test: julia-test rust-test backend-test frontend-test
+	@echo "✅ All tests passed"
+
+test-integration:
+	@echo "🔗 Running integration tests..."
+	$(PYTHON) tests/integration_test.py
+	@echo "✅ Integration tests passed"
+
+# ============================================================================
+# DOCKER BUILD & DEPLOY
+# ============================================================================
+
+docker: veilsim backend frontend
+	@echo "🐳 Building Docker image..."
+	$(DOCKER) build -t veilsim-studio:$(VEILSIM_VERSION) .
+	$(DOCKER) tag veilsim-studio:$(VEILSIM_VERSION) veilsim-studio:latest
+	@echo "✅ Docker image built: veilsim-studio:$(VEILSIM_VERSION)"
+
+docker-run:
+	@echo "▶️  Running Docker container..."
+	$(DOCKER) run -it -p 3000:3000 -p 8000:8000 veilsim-studio:latest
+
+docker-push:
+	@echo "📤 Pushing Docker image..."
+	$(DOCKER) push veilsim-studio:$(VEILSIM_VERSION)
+	$(DOCKER) push veilsim-studio:latest
+
+# ============================================================================
+# KUBERNETES DEPLOYMENT
+# ============================================================================
+
+k8s-create-ns:
+	@echo "🎯 Creating Kubernetes namespace..."
+	kubectl create namespace veilsim || true
+
+k8s-deploy: docker-push k8s-create-ns
+	@echo "🚀 Deploying to Kubernetes..."
+	kubectl apply -f kubernetes/veilsim_deployment.yaml
+	kubectl apply -f kubernetes/veilsim_service.yaml
+	kubectl apply -f kubernetes/veilsim_configmap.yaml
+	@echo "✅ Deployed to Kubernetes"
+
+k8s-status:
+	@echo "📊 Kubernetes deployment status..."
+	kubectl get deployments -n veilsim
+	kubectl get pods -n veilsim
+	kubectl get services -n veilsim
+
+k8s-logs:
+	@echo "📋 Kubernetes logs..."
+	kubectl logs -n veilsim -l app=veilsim-studio -f
+
+k8s-delete:
+	@echo "🗑️  Deleting Kubernetes deployment..."
+	kubectl delete namespace veilsim
+
+# ============================================================================
+# GENESIS INITIALIZATION
+# ============================================================================
+
+genesis-init:
+	@echo "🌅 Initializing Genesis Handshake..."
+	$(JULIA) whisper_ase_v8.jl
+	@echo "✅ Genesis initialized at $(GENESIS_TIME)"
+
+genesis-verify:
+	@echo "🔐 Verifying Genesis state..."
+	$(JULIA) --project=$(SRC_DIR) -e "include(\"$(SRC_DIR)/oso_vm.jl\")"
+	@echo "✅ Genesis verification complete"
+
+# ============================================================================
+# DOCUMENTATION & ARTIFACTS
+# ============================================================================
+
+docs:
+	@echo "📖 Generating documentation..."
+	mkdir -p $(DIST_DIR)/docs
+	@cp VEILSIM_ECOSYSTEM.md $(DIST_DIR)/docs/
+	@cp veilsim_architecture.tech $(DIST_DIR)/docs/
+	@cp examples/*.tech $(DIST_DIR)/docs/examples/ || true
+	@echo "✅ Documentation generated"
+
+artifacts:
+	@echo "📦 Creating distribution artifacts..."
+	mkdir -p $(DIST_DIR)
+	tar -czf $(DIST_DIR)/veilsim-$(VEILSIM_VERSION).tar.gz \
+		$(SRC_DIR)/ $(FFI_DIR)/ $(EXAMPLES_DIR)/ \
+		VEILSIM_ECOSYSTEM.md veilsim_architecture.tech
+	@echo "✅ Artifacts created: $(DIST_DIR)/veilsim-$(VEILSIM_VERSION).tar.gz"
+
+# ============================================================================
+# FULL BUILD & DEPLOYMENT
+# ============================================================================
+
+build: check-env veilsim backend frontend compile-tech index-veils test
+	@echo ""
+	@echo "🎉 VeilSim Full Build Complete!"
+	@echo "   Version: $(VEILSIM_VERSION)"
+	@echo "   Time: $(GENESIS_TIME)"
+	@echo ""
+
+deploy: docker k8s-deploy
+	@echo ""
+	@echo "🚀 VeilSim Deployed!"
+	@echo "   Frontend: http://localhost:3000"
+	@echo "   API: http://localhost:8000"
+	@echo "   K8s Dashboard: kubectl port-forward -n veilsim svc/veilsim-studio 3000:3000"
+	@echo ""
+
+all: build deploy docs artifacts
+	@echo ""
+	@echo "✨ VeilSim Studio Ready"
+	@echo ""
+
+# ============================================================================
+# CLEANUP
+# ============================================================================
+
+clean:
+	@echo "🧹 Cleaning build artifacts..."
+	rm -rf $(BUILD_DIR) $(DIST_DIR)
+	cd $(FFI_DIR) && $(CARGO) clean
+	cd $(BACKEND_DIR) && find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	cd $(FRONTEND_DIR) && rm -rf node_modules build 2>/dev/null || true
+	@echo "✅ Clean complete"
+
+distclean: clean
+	@echo "🗑️  Full clean (removing all generated files)..."
+	rm -f $(SRC_DIR)/veil_index.json
+	rm -f genesis_receipt_*.json
+	@echo "✅ Full clean complete"
+
+# ============================================================================
+# DEFAULT TARGET
+# ============================================================================
+
+.DEFAULT_GOAL := help
