@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VEILOS - 777 Veils | Anti-Gaming Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+        }
+
+        .veilos-container {
+            display: flex;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* Anti-Gaming Layers Display */
+        .anti-gaming-panel {
+            width: 320px;
+            background: rgba(15, 12, 41, 0.95);
+            border-right: 2px solid #6a5acd;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ff6b9d;
+            color: #ff6b9d;
+        }
+
+        .layer {
+            margin-bottom: 12px;
+            padding: 12px;
+            background: rgba(106, 90, 205, 0.15);
+            border-left: 3px solid #6a5acd;
+            border-radius: 4px;
+        }
+
+        .layer-number {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            background: #6a5acd;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+
+        .layer-name {
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .layer-status {
+            font-size: 12px;
+            color: #9d84ff;
+        }
+
+        .layer.active {
+            border-left-color: #00d084;
+            background: rgba(0, 208, 132, 0.1);
+        }
+
+        .layer.warning {
+            border-left-color: #ff9f43;
+            background: rgba(255, 159, 67, 0.1);
+        }
+
+        .layer.locked {
+            border-left-color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+            opacity: 0.6;
+        }
+
+        /* Pilgrimage Gates */
+        .pilgrimage-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid #6a5acd;
+        }
+
+        .pilgrimage-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #9d84ff;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .gate-item {
+            font-size: 11px;
+            padding: 6px;
+            margin-bottom: 6px;
+            background: rgba(42, 35, 80, 0.6);
+            border-radius: 3px;
+            color: #9d84ff;
+        }
+
+        .gate-item.active {
+            background: rgba(0, 208, 132, 0.2);
+            color: #00d084;
+            font-weight: bold;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px;
+            background: rgba(15, 12, 41, 0.95);
+            border-bottom: 2px solid #6a5acd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00d084;
+        }
+
+        .stat-label {
+            color: #9d84ff;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        /* Canvas Area */
+        .canvas-section {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .card {
+            background: rgba(42, 35, 80, 0.7);
+            border: 1px solid rgba(106, 90, 205, 0.5);
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .card-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .receipt-content {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #9d84ff;
+            line-height: 1.6;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .receipt-line {
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(106, 90, 205, 0.2);
+        }
+
+        .receipt-line.success {
+            color: #00d084;
+        }
+
+        .receipt-line.key {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .metric-card {
+            background: rgba(106, 90, 205, 0.1);
+            border: 1px solid rgba(106, 90, 205, 0.3);
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00d084;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: #9d84ff;
+            text-transform: uppercase;
+        }
+
+        .run-button {
+            width: 100%;
+            padding: 12px;
+            background: #6a5acd;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .run-button:hover {
+            background: #7d6fdb;
+            transform: translateY(-2px);
+        }
+
+        .run-button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(106, 90, 205, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #6a5acd;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9d84ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="veilos-container">
+        <!-- Left Panel: Anti-Gaming Layers -->
+        <div class="anti-gaming-panel">
+            <div class="panel-header">⚖️ 7-Layer Defense</div>
+
+            <div class="layer active">
+                <div class="layer-name"><span class="layer-number">1</span>Daily Cap</div>
+                <div class="layer-status">7 sims/day</div>
+            </div>
+
+            <div class="layer active">
+                <div class="layer-name"><span class="layer-number">2</span>Ase Burn</div>
+                <div class="layer-status">7.0 cost</div>
+            </div>
+
+            <div class="layer active">
+                <div class="layer-name"><span class="layer-number">3</span>F1 ≥ 0.777</div>
+                <div class="layer-status">Quality gate</div>
+            </div>
+
+            <div class="layer active">
+                <div class="layer-name"><span class="layer-number">4</span>7/12 Quorum</div>
+                <div class="layer-status">Witnesses</div>
+            </div>
+
+            <div class="layer active">
+                <div class="layer-name"><span class="layer-number">5</span>7.77% Tithe</div>
+                <div class="layer-status">Treasury</div>
+            </div>
+
+            <div class="layer active">
+                <div class="layer-name"><span class="layer-number">6</span>Sabbath</div>
+                <div class="layer-status">No Sat sims</div>
+            </div>
+
+            <div class="layer active">
+                <div class="layer-name"><span class="layer-number">7</span>Ouroboros</div>
+                <div class="layer-status">F1 < 0.5 reverts</div>
+            </div>
+
+            <div class="pilgrimage-section">
+                <div class="pilgrimage-title">7×7 Pilgrimage</div>
+                <div class="gate-item">Ọya (Mexico City)</div>
+                <div class="gate-item">Ogun (Berlin)</div>
+                <div class="gate-item">Oṣun (Sydney)</div>
+                <div class="gate-item">Yemoja (Nairobi)</div>
+                <div class="gate-item">Ṣàngó (Tokyo)</div>
+                <div class="gate-item">Ọbàtálá (Lagos)</div>
+                <div class="gate-item active">Èṣù (Santiago) 1/7</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <div class="header-title">
+                    <span style="font-size: 24px;">🤍🗿⚖️🕊️🌄</span>
+                    <h1>VEILOS v7.7 | Eternal Witness</h1>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="f1Value">0.888</div>
+                        <div class="stat-label">F1 Score</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="aseValue">8.72</div>
+                        <div class="stat-label">Àṣẹ Minted</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="witnessValue">7/12</div>
+                        <div class="stat-label">Witness Quorum</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="simsValue">1/49</div>
+                        <div class="stat-label">7×7 Progress</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="canvas-section">
+                <!-- Last Receipt -->
+                <div class="card">
+                    <div class="card-title">📜 First Sim Receipt (Veil #7)</div>
+                    <div class="receipt-content">
+                        <div class="receipt-line key">@receipt(</div>
+                        <div class="receipt-line">  simId: "sim-7-0x1111"</div>
+                        <div class="receipt-line">  veilId: 7</div>
+                        <div class="receipt-line">  citizen: "world.id/bino.1111"</div>
+                        <div class="receipt-line">  timestamp: "2025-11-11T11:11:11.12Z"</div>
+                        <div class="receipt-line success">✓ f1: 0.888</div>
+                        <div class="receipt-line success">✓ mse: 0.001</div>
+                        <div class="receipt-line success">✓ witnesses: 7/12</div>
+                        <div class="receipt-line">  mint:</div>
+                        <div class="receipt-line">    base: 1.0</div>
+                        <div class="receipt-line">    novelty: 1.7 (2.0×)</div>
+                        <div class="receipt-line">    replication: 3.5×</div>
+                        <div class="receipt-line success">    gross: 9.45 Àṣẹ</div>
+                        <div class="receipt-line">  tithe: 0.73 (7.77%)</div>
+                        <div class="receipt-line success">  net: 8.72 Àṣẹ ✓</div>
+                        <div class="receipt-line">  hash: "0x7a8f3c9e..."</div>
+                        <div class="receipt-line key">)</div>
+                    </div>
+                </div>
+
+                <!-- Metrics & Controls -->
+                <div class="card">
+                    <div class="card-title">📊 Simulation Metrics</div>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">0.888</div>
+                            <div class="metric-label">F1 Score</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">0.001</div>
+                            <div class="metric-label">MSE</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">9.45</div>
+                            <div class="metric-label">Gross Mint</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">8.72</div>
+                            <div class="metric-label">Net (After Tithe)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">3.5×</div>
+                            <div class="metric-label">Replication</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">2.0×</div>
+                            <div class="metric-label">Novelty Bonus</div>
+                        </div>
+                    </div>
+                    <button class="run-button" onclick="runNextSimulation()">▶ Run Next Sim</button>
+                </div>
+
+                <!-- Pilgrimage Progress -->
+                <div class="card">
+                    <div class="card-title">🗺️ 7×7 Pilgrimage</div>
+                    <table style="width: 100%; font-size: 11px; color: #9d84ff;">
+                        <tr style="border-bottom: 1px solid rgba(106, 90, 205, 0.3); padding: 5px 0;">
+                            <td>Gate</td>
+                            <td>Sims</td>
+                            <td>Àṣẹ</td>
+                            <td>Status</td>
+                        </tr>
+                        <tr style="padding: 5px 0;">
+                            <td>Ọya (Mexico)</td>
+                            <td>0/7</td>
+                            <td>0/60.9</td>
+                            <td>PENDING</td>
+                        </tr>
+                        <tr style="padding: 5px 0;">
+                            <td>Ogun (Berlin)</td>
+                            <td>0/7</td>
+                            <td>0/60.9</td>
+                            <td>PENDING</td>
+                        </tr>
+                        <tr style="padding: 5px 0;">
+                            <td>Oṣun (Sydney)</td>
+                            <td>0/7</td>
+                            <td>0/60.9</td>
+                            <td>PENDING</td>
+                        </tr>
+                        <tr style="padding: 5px 0;">
+                            <td>Yemoja (Nairobi)</td>
+                            <td>0/7</td>
+                            <td>0/60.9</td>
+                            <td>PENDING</td>
+                        </tr>
+                        <tr style="padding: 5px 0;">
+                            <td>Ṣàngó (Tokyo)</td>
+                            <td>0/7</td>
+                            <td>0/60.9</td>
+                            <td>PENDING</td>
+                        </tr>
+                        <tr style="padding: 5px 0;">
+                            <td>Ọbàtálá (Lagos)</td>
+                            <td>0/7</td>
+                            <td>0/60.9</td>
+                            <td>PENDING</td>
+                        </tr>
+                        <tr style="padding: 5px 0; color: #00d084; font-weight: bold;">
+                            <td>Èṣù (Santiago)</td>
+                            <td>1/7</td>
+                            <td>8.72/60.9</td>
+                            <td>ACTIVE</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- System Status -->
+                <div class="card">
+                    <div class="card-title">🔥 System Status</div>
+                    <div style="font-size: 12px; color: #9d84ff; line-height: 1.8;">
+                        <div><strong>Status:</strong> <span style="color: #00d084;">✓ LIVE</span></div>
+                        <div><strong>Veils:</strong> 777 deployed</div>
+                        <div><strong>Witness Nodes:</strong> 12 active</div>
+                        <div><strong>Quorum:</strong> 7/12 required</div>
+                        <div><strong>F1 Threshold:</strong> ≥ 0.777</div>
+                        <div><strong>Daily Cap:</strong> 7 sims/day</div>
+                        <div><strong>Ase Burn:</strong> 7.0 per sim</div>
+                        <div><strong>Tithe:</strong> 7.77% to treasury</div>
+                        <div><strong>Genesis:</strong> 2025-11-11T11:11:11Z</div>
+                        <div style="margin-top: 10px; color: #fff;"><strong>Status Code:</strong> ETERNAL</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function runNextSimulation() {
+            alert('Next simulation would burn 7 Àṣẹ, run Veil composition, verify 7/12 quorum, and mint net Àṣẹ if F1 ≥ 0.777.\n\nAll 7 anti-gaming layers enforced.');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeilSim - Node-Based Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/rete@2.2.3/dist/rete.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/rete-render-utils@0.2.0/dist/rete-render-utils.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .veilsim-container {
+            display: flex;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* Left Panel - Veil Library */
+        .veil-library {
+            width: 280px;
+            background: rgba(15, 12, 41, 0.95);
+            border-right: 2px solid #6a5acd;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .library-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #6a5acd;
+            color: #fff;
+        }
+
+        .veil-category {
+            margin-bottom: 25px;
+        }
+
+        .category-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #9d84ff;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .veil-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(106, 90, 205, 0.2);
+            border: 1px solid rgba(106, 90, 205, 0.5);
+            border-radius: 4px;
+            cursor: move;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .veil-item:hover {
+            background: rgba(106, 90, 205, 0.4);
+            border-color: #6a5acd;
+            transform: translateX(4px);
+        }
+
+        .veil-item-name {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .veil-item-id {
+            font-size: 10px;
+            color: #9d84ff;
+        }
+
+        /* Main Canvas */
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(30, 25, 60, 0.8);
+            position: relative;
+        }
+
+        .canvas-header {
+            padding: 15px 20px;
+            background: rgba(15, 12, 41, 0.95);
+            border-bottom: 2px solid #6a5acd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .canvas-title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .canvas-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            padding: 8px 16px;
+            background: #6a5acd;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: #7d6fdb;
+            transform: translateY(-2px);
+        }
+
+        .control-btn.execute {
+            background: #00d084;
+        }
+
+        .control-btn.execute:hover {
+            background: #00e896;
+        }
+
+        .control-btn.clear {
+            background: #ff4757;
+        }
+
+        .control-btn.clear:hover {
+            background: #ff6378;
+        }
+
+        .canvas {
+            flex: 1;
+            background: linear-gradient(45deg, rgba(48, 43, 99, 0.3) 0%, rgba(42, 35, 80, 0.3) 100%);
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        .canvas svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .connection-line {
+            stroke: #6a5acd;
+            stroke-width: 2;
+            fill: none;
+            pointer-events: none;
+        }
+
+        .node {
+            background: rgba(42, 35, 80, 0.9);
+            border: 2px solid #6a5acd;
+            border-radius: 6px;
+            padding: 12px;
+            min-width: 140px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            position: absolute;
+            cursor: grab;
+            transition: all 0.2s ease;
+        }
+
+        .node:hover {
+            border-color: #9d84ff;
+            box-shadow: 0 6px 20px rgba(106, 90, 205, 0.4);
+        }
+
+        .node.executing {
+            background: rgba(0, 208, 132, 0.2);
+            border-color: #00d084;
+            animation: pulse 0.6s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 4px 12px rgba(0, 208, 132, 0.3); }
+            50% { box-shadow: 0 8px 24px rgba(0, 208, 132, 0.6); }
+        }
+
+        .node-title {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .node-ports {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .node-port {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #6a5acd;
+            cursor: pointer;
+            margin: 2px;
+        }
+
+        .node-port:hover {
+            background: #9d84ff;
+            box-shadow: 0 0 8px #6a5acd;
+        }
+
+        /* Right Panel - Inspector/Results */
+        .inspector-panel {
+            width: 300px;
+            background: rgba(15, 12, 41, 0.95);
+            border-left: 2px solid #6a5acd;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .inspector-header {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #6a5acd;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(106, 90, 205, 0.2);
+            border: 1px solid rgba(106, 90, 205, 0.5);
+            border-radius: 4px;
+            padding: 12px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #9d84ff;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .results-container {
+            background: rgba(42, 35, 80, 0.6);
+            border: 1px solid rgba(106, 90, 205, 0.3);
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .result-line {
+            padding: 4px 0;
+            color: #9d84ff;
+            border-bottom: 1px solid rgba(106, 90, 205, 0.2);
+        }
+
+        .result-line.success {
+            color: #00d084;
+        }
+
+        .result-line.error {
+            color: #ff4757;
+        }
+
+        .loader {
+            display: none;
+            border: 3px solid rgba(106, 90, 205, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #6a5acd;
+            width: 24px;
+            height: 24px;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+
+        .loader.active {
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(106, 90, 205, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #6a5acd;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9d84ff;
+        }
+
+        .status-bar {
+            padding: 10px 20px;
+            background: rgba(15, 12, 41, 0.95);
+            border-top: 2px solid #6a5acd;
+            font-size: 12px;
+            color: #9d84ff;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div class="veilsim-container">
+        <!-- Left: Veil Library -->
+        <div class="veil-library">
+            <div class="library-header">🤍 Veil Library</div>
+            
+            <div class="veil-category">
+                <div class="category-title">Classical Systems</div>
+                <div class="veil-item" draggable="true" data-veil-id="1" data-veil-name="PID Control">
+                    <div class="veil-item-name">PID Control</div>
+                    <div class="veil-item-id">Veil #1</div>
+                </div>
+                <div class="veil-item" draggable="true" data-veil-id="2" data-veil-name="State Space">
+                    <div class="veil-item-name">State Space</div>
+                    <div class="veil-item-id">Veil #2</div>
+                </div>
+                <div class="veil-item" draggable="true" data-veil-id="3" data-veil-name="Kalman Filter">
+                    <div class="veil-item-name">Kalman Filter</div>
+                    <div class="veil-item-id">Veil #3</div>
+                </div>
+            </div>
+
+            <div class="veil-category">
+                <div class="category-title">ML & AI</div>
+                <div class="veil-item" draggable="true" data-veil-id="26" data-veil-name="Gradient Descent">
+                    <div class="veil-item-name">Gradient Descent</div>
+                    <div class="veil-item-id">Veil #26</div>
+                </div>
+                <div class="veil-item" draggable="true" data-veil-id="50" data-veil-name="Neural Network">
+                    <div class="veil-item-name">Neural Network</div>
+                    <div class="veil-item-id">Veil #50</div>
+                </div>
+            </div>
+
+            <div class="veil-category">
+                <div class="category-title">Signal Processing</div>
+                <div class="veil-item" draggable="true" data-veil-id="76" data-veil-name="FFT">
+                    <div class="veil-item-name">Fast Fourier Transform</div>
+                    <div class="veil-item-id">Veil #76</div>
+                </div>
+                <div class="veil-item" draggable="true" data-veil-id="85" data-veil-name="Wavelet">
+                    <div class="veil-item-name">Wavelet Transform</div>
+                    <div class="veil-item-id">Veil #85</div>
+                </div>
+            </div>
+
+            <div class="veil-category">
+                <div class="category-title">Robotics</div>
+                <div class="veil-item" draggable="true" data-veil-id="101" data-veil-name="Forward Kinematics">
+                    <div class="veil-item-name">Forward Kinematics</div>
+                    <div class="veil-item-id">Veil #101</div>
+                </div>
+                <div class="veil-item" draggable="true" data-veil-id="115" data-veil-name="Inverse Kinematics">
+                    <div class="veil-item-name">Inverse Kinematics</div>
+                    <div class="veil-item-id">Veil #115</div>
+                </div>
+            </div>
+
+            <div class="veil-category">
+                <div class="category-title">First Canon</div>
+                <div class="veil-item" draggable="true" data-veil-id="401" data-veil-name="Ifá Binary">
+                    <div class="veil-item-name">Ifá Binary Bones</div>
+                    <div class="veil-item-id">Veil #401</div>
+                </div>
+            </div>
+
+            <div class="veil-category">
+                <div class="category-title">Quantum</div>
+                <div class="veil-item" draggable="true" data-veil-id="501" data-veil-name="Quantum Gates">
+                    <div class="veil-item-name">Quantum Gates</div>
+                    <div class="veil-item-id">Veil #501</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center: Canvas -->
+        <div class="canvas-container">
+            <div class="canvas-header">
+                <div class="canvas-title">🗿 VeilSim Studio - Node Composer</div>
+                <div class="canvas-controls">
+                    <button class="control-btn execute" id="executeBtn" onclick="executeSimulation()">▶ Execute</button>
+                    <button class="control-btn clear" onclick="clearCanvas()">✕ Clear</button>
+                </div>
+            </div>
+            <div class="canvas" id="canvas">
+                <svg id="connections"></svg>
+            </div>
+            <div class="status-bar">
+                <span id="status">Ready</span>
+                <span id="timer">Time: 0ms</span>
+            </div>
+        </div>
+
+        <!-- Right: Inspector -->
+        <div class="inspector-panel">
+            <div class="inspector-header">📊 Simulation Stats</div>
+            
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-label">Nodes</div>
+                    <div class="stat-value" id="nodeCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Connections</div>
+                    <div class="stat-value" id="connCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">F1 Score</div>
+                    <div class="stat-value" id="f1Score">0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Àṣẹ Earned</div>
+                    <div class="stat-value" id="aseEarned">0.00</div>
+                </div>
+            </div>
+
+            <div class="inspector-header">📋 Execution Log</div>
+            <div class="results-container" id="resultsLog">
+                <div class="result-line">Awaiting simulation...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5555/api';
+        
+        let nodes = [];
+        let nodeIdCounter = 0;
+        let connections = [];
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDraggingCanvas = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        const canvas = document.getElementById('canvas');
+        const svg = document.getElementById('connections');
+        const executeBtn = document.getElementById('executeBtn');
+
+        // Drag and drop from library
+        document.querySelectorAll('.veil-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('veil-id', item.dataset.veilId);
+                e.dataTransfer.setData('veil-name', item.dataset.veilName);
+            });
+        });
+
+        // Canvas drop
+        canvas.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+
+        canvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const veilId = e.dataTransfer.getData('veil-id');
+            const veilName = e.dataTransfer.getData('veil-name');
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            addNode(veilName, veilId, x, y);
+        });
+
+        function addNode(name, veilId, x, y) {
+            const nodeId = nodeIdCounter++;
+            const node = document.createElement('div');
+            node.className = 'node';
+            node.id = `node-${nodeId}`;
+            node.style.left = x + 'px';
+            node.style.top = y + 'px';
+            node.innerHTML = `
+                <div class="node-title">${name}</div>
+                <div class="node-ports">
+                    <div class="node-port input-port" data-node-id="${nodeId}" data-port="in"></div>
+                    <div class="node-port output-port" data-node-id="${nodeId}" data-port="out"></div>
+                </div>
+            `;
+            
+            canvas.appendChild(node);
+            
+            nodes.push({id: nodeId, name, veilId, x, y, element: node});
+            updateStats();
+            
+            // Make draggable
+            makeDraggable(node, nodeId);
+        }
+
+        function makeDraggable(element, nodeId) {
+            let isDragging = false;
+            let currentX = 0;
+            let currentY = 0;
+
+            element.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                currentX = e.clientX - element.offsetLeft;
+                currentY = e.clientY - element.offsetTop;
+                element.style.zIndex = 1000;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const x = e.clientX - currentX;
+                    const y = e.clientY - currentY;
+                    element.style.left = x + 'px';
+                    element.style.top = y + 'px';
+                    
+                    const node = nodes.find(n => n.id === nodeId);
+                    if (node) {
+                        node.x = x;
+                        node.y = y;
+                    }
+                    
+                    redrawConnections();
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                element.style.zIndex = 1;
+            });
+        }
+
+        function redrawConnections() {
+            svg.innerHTML = '';
+            connections.forEach(conn => {
+                const fromNode = nodes.find(n => n.id === conn.from);
+                const toNode = nodes.find(n => n.id === conn.to);
+                
+                if (fromNode && toNode) {
+                    const x1 = fromNode.x + 140;
+                    const y1 = fromNode.y + 35;
+                    const x2 = toNode.x;
+                    const y2 = toNode.y + 35;
+                    
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    line.setAttribute('d', `M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`);
+                    line.setAttribute('class', 'connection-line');
+                    svg.appendChild(line);
+                }
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('nodeCount').textContent = nodes.length;
+            document.getElementById('connCount').textContent = connections.length;
+        }
+
+        function clearCanvas() {
+            nodes.forEach(node => node.element.remove());
+            nodes = [];
+            connections = [];
+            svg.innerHTML = '';
+            nodeIdCounter = 0;
+            updateStats();
+            document.getElementById('resultsLog').innerHTML = '<div class="result-line">Canvas cleared</div>';
+        }
+
+        async function executeSimulation() {
+            if (nodes.length === 0) {
+                alert('Please add at least one veil to the canvas');
+                return;
+            }
+
+            const status = document.getElementById('status');
+            const resultsLog = document.getElementById('resultsLog');
+            const startTime = performance.now();
+
+            resultsLog.innerHTML = '';
+            status.textContent = '⏳ Executing...';
+            executeBtn.disabled = true;
+
+            try {
+                // Get composition (veil IDs)
+                const composition = nodes.map(n => parseInt(n.veilId));
+                
+                const logEntry = (text, className = '') => {
+                    const entry = document.createElement('div');
+                    entry.className = 'result-line ' + className;
+                    entry.textContent = text;
+                    resultsLog.appendChild(entry);
+                };
+
+                logEntry(`🚀 Composing veils: ${composition.join(', ')}`);
+
+                // Call real API
+                const response = await fetch(`${API_URL}/simulate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        composition: composition,
+                        wallet: 'user_' + Date.now()
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    logEntry(`✗ Error: ${data.error}`, 'error');
+                    status.textContent = 'Error';
+                    return;
+                }
+
+                const sim = data.simulation;
+
+                // Log results
+                logEntry(`✓ Composition executed in ${sim.execution_time_ms.toFixed(0)}ms`, 'success');
+                logEntry(`✓ Overall F1 Score: ${(sim.overall_f1_score * 100).toFixed(1)}%`, 'success');
+                logEntry(`✓ Àṣẹ Earned: ${sim.total_ase_earned.toFixed(2)}`, 'success');
+                logEntry('');
+
+                // Per-veil results
+                sim.veil_results.forEach(result => {
+                    logEntry(`  • Veil #${result.veil_id}: F1=${(result.f1_score * 100).toFixed(1)}% Àṣẹ=${result.ase_minted.toFixed(2)}`);
+                });
+
+                // Update metrics
+                document.getElementById('f1Score').textContent = (sim.overall_f1_score).toFixed(4);
+                document.getElementById('aseEarned').textContent = sim.total_ase_earned.toFixed(2);
+                document.getElementById('timer').textContent = `Time: ${sim.execution_time_ms.toFixed(0)}ms`;
+
+                status.textContent = '✓ Ready';
+            } catch (error) {
+                resultsLog.innerHTML = '';
+                const logEntry = document.createElement('div');
+                logEntry.className = 'result-line error';
+                logEntry.textContent = `✗ Connection error: ${error.message}`;
+                resultsLog.appendChild(logEntry);
+                status.textContent = 'Error';
+            } finally {
+                executeBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeilSim Studio | 777 Veils</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="veil-dashboard">
+    <div class="container">
+        <!-- Header -->
+        <header class="veil-header">
+            <div class="header-symbols">🤍🗿⚖️🕊️🌄</div>
+            <h1>VeilSim Studio</h1>
+            <p class="subtitle">777 Sacred-Scientific Veils</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="veil-nav">
+            <button class="nav-btn active" data-section="browser">🔍 Veil Browser</button>
+            <button class="nav-btn" data-section="simulator">⚙️ Simulator</button>
+            <button class="nav-btn" data-section="docs">📖 Documentation</button>
+            <button class="nav-btn" data-section="scoring">🎯 Scoring</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="veil-main">
+
+            <!-- SECTION 1: Veil Browser -->
+            <section id="browser" class="veil-section active">
+                <h2>Veil Catalog</h2>
+                <div class="browser-controls">
+                    <input type="text" id="searchVeil" placeholder="Search veils by name, ID, or tier..." class="search-input">
+                    <select id="tierFilter" class="filter-select">
+                        <option value="">All Tiers</option>
+                        <option value="1-25">Classical Systems (1-25)</option>
+                        <option value="26-75">ML & AI (26-75)</option>
+                        <option value="76-100">Signal Processing (76-100)</option>
+                        <option value="101-125">Robotics (101-125)</option>
+                        <option value="401-413">First Canon (401-413)</option>
+                        <option value="501-550">Quantum (501-550)</option>
+                    </select>
+                </div>
+                <div id="veilGrid" class="veil-grid">
+                    <!-- Veils loaded via JavaScript -->
+                </div>
+            </section>
+
+            <!-- SECTION 2: Simulator -->
+            <section id="simulator" class="veil-section">
+                <h2>VeilSim Composer</h2>
+                <div class="simulator-layout">
+                    <div class="sim-controls">
+                        <h3>Drag Veils to Compose</h3>
+                        <div id="veilPalette" class="veil-palette">
+                            <!-- Draggable veil cards -->
+                        </div>
+                    </div>
+                    <div class="sim-canvas">
+                        <h3>Composition</h3>
+                        <div id="compositionCanvas" class="composition-canvas">
+                            <p>Drag veils here to compose</p>
+                        </div>
+                        <button id="executeComposition" class="execute-btn">Execute Composition</button>
+                    </div>
+                    <div class="sim-metrics">
+                        <h3>Metrics</h3>
+                        <div id="metricsDisplay" class="metrics-display">
+                            <p>Execute a composition to see metrics</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3: Documentation -->
+            <section id="docs" class="veil-section">
+                <h2>Veil Documentation</h2>
+                <div id="docsContent" class="docs-content">
+                    <div id="selectedVeilDocs">
+                        <p>Select a veil to view documentation</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 4: Scoring -->
+            <section id="scoring" class="veil-section">
+                <h2>VeilSim F1 Scoring</h2>
+                <div class="scoring-display">
+                    <div class="score-card">
+                        <h3>Current F1 Score</h3>
+                        <div id="f1Score" class="score-value">0.00</div>
+                    </div>
+                    <div class="score-card">
+                        <h3>Àṣẹ Earned</h3>
+                        <div id="aseEarned" class="score-value">0.00</div>
+                    </div>
+                    <div class="score-card">
+                        <h3>Veils Executed</h3>
+                        <div id="veilsExecuted" class="score-value">0</div>
+                    </div>
+                </div>
+                <canvas id="scoringChart"></canvas>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Veil data structure
+        const veilDatabase = {
+            1: {id: 1, name: "PID Control", tier: "Classical Systems", opcode: "0x01", description: "Proportional-Integral-Derivative feedback control"},
+            2: {id: 2, name: "State Space", tier: "Classical Systems", opcode: "0x02", description: "Linear state-space representation"},
+            26: {id: 26, name: "Gradient Descent", tier: "ML & AI", opcode: "0x1A", description: "Stochastic gradient descent optimizer"},
+            76: {id: 76, name: "Fast Fourier Transform", tier: "Signal Processing", opcode: "0x4C", description: "Efficient frequency domain analysis"},
+            101: {id: 101, name: "Forward Kinematics", tier: "Robotics", opcode: "0x65", description: "Robot arm pose calculation"},
+            401: {id: 401, name: "Ifá Binary Bones", tier: "First Canon", opcode: "0x191", description: "Sacred binary oracle system"},
+            501: {id: 501, name: "Quantum Gates", tier: "Quantum", opcode: "0x1F5", description: "Universal quantum gate operations"}
+        };
+
+        // Initialize sections
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.veil-section').forEach(s => s.classList.remove('active'));
+                e.target.classList.add('active');
+                const section = document.getElementById(e.target.dataset.section);
+                if (section) section.classList.add('active');
+            });
+        });
+
+        // Load veil grid
+        function loadVeilGrid() {
+            const grid = document.getElementById('veilGrid');
+            grid.innerHTML = Object.values(veilDatabase).map(veil => `
+                <div class="veil-card" data-veil-id="${veil.id}">
+                    <h3>Veil ${veil.id}</h3>
+                    <p class="veil-name">${veil.name}</p>
+                    <p class="veil-tier">${veil.tier}</p>
+                    <p class="veil-opcode">${veil.opcode}</p>
+                    <p class="veil-desc">${veil.description}</p>
+                </div>
+            `).join('');
+        }
+
+        loadVeilGrid();
+
+        // F1 Scoring simulation
+        document.getElementById('executeComposition').addEventListener('click', () => {
+            const f1Score = (Math.random() * 0.3 + 0.7).toFixed(2);
+            const aseEarned = (f1Score * 5).toFixed(2);
+            document.getElementById('f1Score').textContent = f1Score;
+            document.getElementById('aseEarned').textContent = aseEarned;
+            document.getElementById('veilsExecuted').textContent = parseInt(document.getElementById('veilsExecuted').textContent) + 1;
+        });
+    </script>
+</body>
+</html>
