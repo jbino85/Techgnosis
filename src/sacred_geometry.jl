@@ -1,216 +1,435 @@
 """
-sacred_geometry.jl
-
-Sacred constants and cosmic mappings for the 777 Veils.
-Bridges mathematical universals with spiritual geometry.
+    SacredGeometry - Universal sacred and mathematical constants
+    
+Bridges spiritual geometry with scientific constants.
+Foundation for the First Canon (Veils 401-413).
 """
 
 module SacredGeometry
 
-using Base.MathConstants
+# ============================================================================
+# FUNDAMENTAL MATHEMATICAL CONSTANTS
+# ============================================================================
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# MATHEMATICAL CONSTANTS
-# ═══════════════════════════════════════════════════════════════════════════════
+"""Golden Ratio (Φ) - The divine proportion"""
+const φ = (1 + sqrt(5)) / 2  # ≈ 1.618033988749...
 
-const φ = (1 + sqrt(5)) / 2                      # Golden ratio: 1.618033988749895
-const π = Base.π                                 # Circle constant: 3.141592653589793
-const e = Base.MathConstants.e                   # Euler's number: 2.718281828459045
-const √2 = sqrt(2)                              # √2: 1.414213562373095
-const √3 = sqrt(3)                              # √3: 1.732050807568877
-const √5 = sqrt(5)                              # √5: 2.23606797749979
+"""Pi (π) - Circle constant"""
+const π = Base.π  # ≈ 3.141592653589...
 
-# Catalan's constant
-const CATALAN = 0.915965594177219015054603514932384110774
+"""Euler's Number (e) - Growth/exponential constant"""
+const e = Base.MathConstants.e  # ≈ 2.718281828459...
 
-# Apéry's constant (ζ(3))
-const APERY = 1.202056903159594285399738161511449990765
+"""Catalan's Constant (G)"""
+const G_catalan = 0.91596559417721901505...
 
-# Conway's constant
-const CONWAY = 1.30357726903429639155164369976570738
+"""Euler-Mascheroni Constant (γ) - Harmonic series limit"""
+const γ_euler = 0.5772156649015328606...
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PHYSICAL & FUNDAMENTAL CONSTANTS
-# ═══════════════════════════════════════════════════════════════════════════════
+"""Apéry's Constant (ζ(3))"""
+const ζ3 = 1.202056903159594...
 
-const SPEED_OF_LIGHT = 299_792_458.0            # m/s
-const PLANCK_CONSTANT = 6.62607015e-34          # J⋅s
-const GRAVITATIONAL_CONSTANT = 6.67430e-11      # m³⋅kg⁻¹⋅s⁻²
-const FINE_STRUCTURE = 7.2973525693e-3          # α (dimensionless)
-const ELECTRON_MASS = 9.1093837015e-31          # kg
-const PROTON_MASS = 1.67262192369e-27           # kg
+# ============================================================================
+# SQUARE ROOTS - FUNDAMENTAL IRRATIONALS
+# ============================================================================
 
-# Planck units
-const PLANCK_MASS = 2.176434e-8                 # kg
-const PLANCK_TIME = 5.391247e-44                # s
-const PLANCK_LENGTH = 1.616255e-35              # m
-const PLANCK_TEMP = 1.416784e32                 # K
+"""√2 - Diagonal of unit square"""
+const √2 = sqrt(2)  # ≈ 1.414213562373...
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# HARMONIC & RESONANCE FREQUENCIES
-# ═══════════════════════════════════════════════════════════════════════════════
+"""√3 - Height of equilateral triangle"""
+const √3 = sqrt(3)  # ≈ 1.732050807568...
 
-const SCHUMANN_FREQUENCY = 7.83                 # Hz (Earth's primary resonance)
+"""√5 - Related to golden ratio"""
+const √5 = sqrt(5)  # ≈ 2.236067977499...
 
-# Chakra frequencies (Hz, Pythagorean tuning based)
-const CHAKRA_FREQUENCIES = Dict(
-    "root"      => 194.18,                      # Muladhara (C3)
-    "sacral"    => 256.87,                      # Svadhisthana (D3)
-    "solar"     => 384.00,                      # Manipura (G3)
-    "heart"     => 341.33,                      # Anahata (F3)
-    "throat"    => 528.00,                      # Vishuddha (C4)
-    "third_eye" => 639.00,                      # Ajna (E4)
-    "crown"     => 963.00                       # Sahasrara (B4)
-)
+"""√φ - Golden ratio square root"""
+const √φ = sqrt(φ)
 
-# Solfeggio frequencies (Hz)
-const SOLFEGGIO = Dict(
-    "UT"    => 396.0,   # Liberating guilt & fear
-    "RE"    => 417.0,   # Undoing situations & facilitating change
-    "MI"    => 528.0,   # Transformation & miracles (DNA repair)
-    "FA"    => 639.0,   # Connecting & relationships
-    "SOL"   => 741.0,   # Awakening intuition
-    "LA"    => 852.0,   # Returning to spiritual order
-    "TI"    => 963.0    # Activating pineal gland
-)
+"""1/φ - Reciprocal golden ratio"""
+const φ_inv = 1 / φ  # ≈ 0.618033988749...
 
-# Pythagorean musical intervals
-const A4_FREQUENCY = 432.0                      # Hz (pure tuning vs 440 Hz)
-const A4_FREQUENCY_STANDARD = 440.0             # Hz (modern tuning)
+# ============================================================================
+# PHYSICAL CONSTANTS (SI Units)
+# ============================================================================
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# COSMIC & TEMPORAL CYCLES
-# ═══════════════════════════════════════════════════════════════════════════════
+"""Speed of light (c) in m/s"""
+const c = 299792458.0
 
-const COSMIC_YEAR = 26_000                      # Years (precession of equinoxes)
-const METONIC_CYCLE = 19                        # Years (lunar-solar alignment)
-const SAROS_CYCLE = 18                          # Years (eclipse recurrence)
-const LUNATION = 29.530588861                   # Days (synodic lunar month)
-const TROPICAL_YEAR = 365.24219                 # Days (Earth's orbital period)
-const SIDEREAL_YEAR = 365.25636                 # Days
+"""Gravitational constant (G) in m³/(kg·s²)"""
+const G = 6.67430e-11
 
-# The sacred 1440: minutes in day = 24 × 60
-const SACRED_1440 = 1440                        # Unified Yoruba/cosmic time base
+"""Planck constant (h) in J·s"""
+const h = 6.62607015e-34
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# IFÁDÍNLÓGÚN: BINARY COMPUTATION (Yoruba)
-# ═══════════════════════════════════════════════════════════════════════════════
+"""Reduced Planck constant (ℏ) in J·s"""
+const ℏ = h / (2 * π)
 
-# Odù (the 16 fundamental principles) as powers of 2
-const IFA_BINARY = [
-    1,                                          # Odù primordial
-    2, 4, 8, 16,                               # First 4 pairs (2^1 to 2^4)
-    32, 64, 128, 256,                          # Next 4 pairs (2^5 to 2^8)
-    512, 1024, 2048, 4096,                     # Third set (2^9 to 2^12)
-    8192, 16384, 32768, 65536                  # Extended (2^13 to 2^16)
+"""Planck mass (mₚ) in kg"""
+const m_planck = sqrt(ℏ * c / G)
+
+"""Planck length (lₚ) in m"""
+const l_planck = sqrt(ℏ * G / c^3)
+
+"""Planck time (tₚ) in s"""
+const t_planck = sqrt(ℏ * G / c^5)
+
+"""Planck temperature (Tₚ) in K"""
+const T_planck = sqrt(ℏ * c^5 / (G * 1.380649e-23^2))
+
+"""Elementary charge (e) in C"""
+const e_charge = 1.602176634e-19
+
+"""Electron mass (mₑ) in kg"""
+const m_electron = 9.1093837015e-31
+
+"""Fine structure constant (α)"""
+const α = 7.2973525693e-3
+
+# ============================================================================
+# ASTRONOMICAL & COSMIC CYCLES
+# ============================================================================
+
+"""24-hour day cycle in seconds"""
+const DAY_SECONDS = 86400
+
+"""Number of seconds in 1440 minutes (cosmic 24×60)"""
+const COSMIC_1440 = 1440 * 60  # 86400 seconds = 24h
+
+"""Lunar month in days"""
+const LUNAR_MONTH = 29.53059
+
+"""Metonic cycle (lunar-solar alignment) in years"""
+const METONIC_CYCLE = 19
+
+"""Saros cycle (eclipse repeat) in years"""
+const SAROS_CYCLE = 18.03
+
+"""Cosmic year (galactic year) in years"""
+const COSMIC_YEAR = 26000
+
+"""Precession of equinoxes in years"""
+const PRECESSION_CYCLE = 25920
+
+"""Solar year (tropical) in days"""
+const SOLAR_YEAR = 365.2425
+
+"""Lunar year in days"""
+const LUNAR_YEAR = LUNAR_MONTH * 12
+
+"""Venus synodic period (Earth-Venus alignment) in days"""
+const VENUS_CYCLE = 584
+
+"""Saturnian year (Saturn orbit) in Earth years"""
+const SATURN_YEAR = 29.457
+
+# ============================================================================
+# EARTH & GEOPHYSICAL CONSTANTS
+# ============================================================================
+
+"""Earth's mean radius in meters"""
+const EARTH_RADIUS = 6.371e6
+
+"""Earth's rotation period in seconds"""
+const EARTH_DAY = 86164.0905  # sidereal day
+
+"""Earth's orbital period in seconds"""
+const EARTH_YEAR = 365.25 * DAY_SECONDS
+
+"""Schumann Resonance (Earth's fundamental frequency) in Hz"""
+const SCHUMANN_FREQUENCY = 7.83
+
+"""Earth's vortex angle (Phi angle) in degrees"""
+const EARTH_VORTEX_ANGLE = 19.47
+
+"""Earth's vortex angle in radians"""
+const EARTH_VORTEX_RADIAN = deg2rad(EARTH_VORTEX_ANGLE)
+
+# ============================================================================
+# CHAKRA FREQUENCIES (Hz) - SACRED TUNING
+# ============================================================================
+
+"""Root Chakra (Muladhara) frequency"""
+const CHAKRA_ROOT = 194.18
+
+"""Sacral Chakra (Svadhisthana) frequency"""
+const CHAKRA_SACRAL = 256.87
+
+"""Solar Plexus Chakra (Manipura) frequency"""
+const CHAKRA_SOLAR = 384.0
+
+"""Heart Chakra (Anahata) frequency"""
+const CHAKRA_HEART = 341.33
+
+"""Throat Chakra (Vishuddha) frequency"""
+const CHAKRA_THROAT = 528.0
+
+"""Third Eye Chakra (Ajna) frequency"""
+const CHAKRA_AJNA = 639.0
+
+"""Crown Chakra (Sahasrara) frequency"""
+const CHAKRA_CROWN = 963.0
+
+"""Complete chakra frequency array"""
+const CHAKRA_FREQUENCIES = [
+    CHAKRA_ROOT,
+    CHAKRA_SACRAL,
+    CHAKRA_SOLAR,
+    CHAKRA_HEART,
+    CHAKRA_THROAT,
+    CHAKRA_AJNA,
+    CHAKRA_CROWN
 ]
 
-# Ifá casting: 256 possible readings (2^8)
-const IFA_READINGS = 256
+# ============================================================================
+# SACRED FREQUENCIES & MUSICAL TUNING
+# ============================================================================
 
-# Combined with cosmic 1440
-const IFA_COSMIC = 1440                         # Unified basis
+"""Pythagorean tuning base frequency (A4 = 432 Hz)"""
+const A4_PYTHAGOREAN = 432.0
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# SACRED GEOMETRY: PLATONIC & ARCHIMEDEAN SOLIDS
-# ═══════════════════════════════════════════════════════════════════════════════
+"""Standard modern tuning (A4 = 440 Hz)"""
+const A4_MODERN = 440.0
 
-# Platonic solids (5 perfect forms)
-const PLATONIC_SOLIDS = Dict(
-    "tetrahedron" => Dict("faces" => 4, "vertices" => 4, "edges" => 6),
-    "cube"        => Dict("faces" => 6, "vertices" => 8, "edges" => 12),
-    "octahedron"  => Dict("faces" => 8, "vertices" => 6, "edges" => 12),
-    "dodecahedron"=> Dict("faces" => 12, "vertices" => 20, "edges" => 30),
-    "icosahedron" => Dict("faces" => 20, "vertices" => 12, "edges" => 30)
-)
+"""Solfeggio 528 Hz - Love & Healing frequency"""
+const SOLFEGGIO_528 = 528.0
 
-# Sacred ratios
-const VESICA_PISCIS = (sqrt(3) / 2)              # Geometric ratio: √3/2
-const FLOWER_OF_LIFE_RADIUS = φ                 # Golden ratio scaling
+"""Solfeggio 432 Hz - Foundation frequency"""
+const SOLFEGGIO_432 = 432.0
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# E₈ & EXCEPTIONAL STRUCTURES
-# ═══════════════════════════════════════════════════════════════════════════════
+"""Solfeggio 864 Hz - Octave above 432 Hz"""
+const SOLFEGGIO_864 = 864.0
 
-const E8_DIMENSION = 248                         # Dimension of E₈ Lie group
-const MONSTER_ORDER = 808_017_424_794_512_875  # Order of Monster group
-const LEECH_LATTICE_DIM = 24                    # Leech lattice dimension
+"""3-6-9 Vortex (Tesla's divine number) - base frequency"""
+const TESLA_369_BASE = 3.0  # Fundamental ratio
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# VEIL SYSTEM CONSTANTS
-# ═══════════════════════════════════════════════════════════════════════════════
+"""Hertz unit frequency array - all sacred frequencies"""
+const SACRED_FREQUENCIES = [
+    SCHUMANN_FREQUENCY,      # 7.83 Hz - Earth resonance
+    CHAKRA_ROOT,            # 194.18 Hz
+    CHAKRA_SACRAL,          # 256.87 Hz
+    CHAKRA_SOLAR,           # 384.0 Hz
+    CHAKRA_HEART,           # 341.33 Hz
+    CHAKRA_THROAT,          # 528.0 Hz
+    CHAKRA_AJNA,            # 639.0 Hz
+    CHAKRA_CROWN            # 963.0 Hz
+]
 
-const VEIL_COUNT = 777                          # Total number of veils
-const VEIL_GENESIS_TIME = "2025-11-11T11:11:11Z" # Genesis timestamp
-const VEIL_SIM_F1_THRESHOLD = 0.9               # F1 score threshold for rewards
-const VEIL_SIM_ASE_REWARD = 5.0                 # Àṣẹ units per qualified veil
+# ============================================================================
+# YORUBA IFÁ BINARY SYSTEM
+# ============================================================================
 
-# Veil tiers
-const VEIL_TIERS = Dict(
-    "classical_systems"     => (1, 25),
-    "ml_ai"                 => (26, 75),
-    "signal_processing"     => (76, 100),
-    "robotics_kinematics"   => (101, 125),
-    "computer_vision"       => (126, 150),
-    "iot_networks"          => (151, 175),
-    "optimization_planning" => (176, 200),
-    "physics_dynamics"      => (201, 225),
-    "advanced_estimation"   => (226, 250),
-    "navigation_mapping"    => (251, 275),
-    "multi_agent_systems"   => (276, 300),
-    "crypto_blockchain"     => (301, 350),
-    "first_canon"           => (401, 413),
-    "meta_laws_symmetry"    => (414, 425),
-    "fundamental_physics"   => (426, 475),
-    "ai_category_theory"    => (476, 500),
-    "quantum_foundations"   => (501, 550),
-    "exotic_materials"      => (551, 600),
-    "blockchain_future"     => (601, 680),
-    "extended_meta"         => (681, 777)
-)
+"""Ifá binary computation base sequence"""
+const IFA_BINARY = [2, 16, 256, 65536]
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# CALENDAR & CULTURAL CONSTANTS
-# ═══════════════════════════════════════════════════════════════════════════════
+"""Ifá binary power: 2¹"""
+const IFA_2 = 2
 
-# Yoruba calendar
-const YORUBA_CYCLE = 7                          # Days in Yoruba week
-const YORUBA_DAY_NAMES = ["Aiku", "Ajiṣé", "Ogún", "Ọjọ́", "Ẹtì", "Ẹta", "Ẹ"]
+"""Ifá binary power: 2⁴"""
+const IFA_16 = 16
 
-# Kemetic calendar
-const KEMETIC_DAYS_PER_YEAR = 360
-const KEMETIC_LEAP_DAYS = 5
+"""Ifá binary power: 2⁸"""
+const IFA_256 = 256
 
-# Vedic calendar
-const VEDIC_NAKSHATRAS = 27                     # Lunar mansions
-const VEDIC_RASHIS = 12                         # Zodiacal signs
+"""Ifá binary power: 2¹⁶"""
+const IFA_65536 = 65536
 
-# Mayan calendar (Tzolk'in)
-const MAYAN_TZOLKIN = 260                       # Days (13 × 20)
-const MAYAN_HAAB = 365                          # Days (18 × 20 + 5)
-const MAYAN_LONG_COUNT_EPOCH = -3114441          # Days before 0.0.0.0.0
+"""Number of Odù (sacred binary combinations in Ifá)"""
+const IFA_ODU_COUNT = 256
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# EXPORT ALL CONSTANTS
-# ═══════════════════════════════════════════════════════════════════════════════
+# ============================================================================
+# PLATONIC SOLIDS & SACRED GEOMETRY
+# ============================================================================
 
-export φ, π, e, √2, √3, √5
-export CATALAN, APERY, CONWAY
-export SPEED_OF_LIGHT, PLANCK_CONSTANT, GRAVITATIONAL_CONSTANT
-export FINE_STRUCTURE, ELECTRON_MASS, PROTON_MASS
-export PLANCK_MASS, PLANCK_TIME, PLANCK_LENGTH, PLANCK_TEMP
-export SCHUMANN_FREQUENCY, CHAKRA_FREQUENCIES, SOLFEGGIO
-export A4_FREQUENCY, A4_FREQUENCY_STANDARD
-export COSMIC_YEAR, METONIC_CYCLE, SAROS_CYCLE, LUNATION
-export TROPICAL_YEAR, SIDEREAL_YEAR, SACRED_1440
-export IFA_BINARY, IFA_READINGS, IFA_COSMIC
-export PLATONIC_SOLIDS, VESICA_PISCIS, FLOWER_OF_LIFE_RADIUS
-export E8_DIMENSION, MONSTER_ORDER, LEECH_LATTICE_DIM
-export VEIL_COUNT, VEIL_GENESIS_TIME, VEIL_SIM_F1_THRESHOLD, VEIL_SIM_ASE_REWARD
-export VEIL_TIERS
-export YORUBA_CYCLE, YORUBA_DAY_NAMES
-export KEMETIC_DAYS_PER_YEAR, KEMETIC_LEAP_DAYS
-export VEDIC_NAKSHATRAS, VEDIC_RASHIS
-export MAYAN_TZOLKIN, MAYAN_HAAB, MAYAN_LONG_COUNT_EPOCH
+"""Number of Platonic solids (perfect symmetry)"""
+const PLATONIC_SOLIDS_COUNT = 5
+
+"""Number of Archimedean solids"""
+const ARCHIMEDEAN_SOLIDS_COUNT = 13
+
+"""Number of Kepler-Poinsot solids (star polyhedra)"""
+const KEPLER_POINSOT_COUNT = 4
+
+"""Total regular polyhedra"""
+const REGULAR_POLYHEDRA_COUNT = PLATONIC_SOLIDS_COUNT + KEPLER_POINSOT_COUNT
+
+"""Vesica Piscis ratio (two overlapping circles)"""
+const VESICA_PISCIS_RATIO = √3 / 2
+
+"""Sacred cubit in meters (Egyptian)"""
+const SACRED_CUBIT = 0.5236  # meters (φ related)
+
+# ============================================================================
+# CALENDAR SYSTEMS & COSMIC NUMBERS
+# ============================================================================
+
+"""Yoruba calendar: days in full cycle (cosmic 24×60)"""
+const YORUBA_CYCLE = 1440
+
+"""Mayan Long Count base"""
+const MAYAN_BASE = 260  # tzolkin
+
+"""Mayan vigesimal system"""
+const MAYAN_VIGESIMAL = 20
+
+"""Islamic lunar months per year"""
+const ISLAMIC_MONTHS = 12
+
+"""Vedic yugas: Satya Yuga (golden age) in years"""
+const SATYA_YUGA = 1728000
+
+"""Vedic yugas: Treta Yuga in years"""
+const TRETA_YUGA = 1296000
+
+"""Vedic yugas: Dvapara Yuga in years"""
+const DVAPARA_YUGA = 864000
+
+"""Vedic yugas: Kali Yuga (dark age) in years"""
+const KALI_YUGA = 432000
+
+"""Total Maha Yuga (complete cycle) in years"""
+const MAHA_YUGA = SATYA_YUGA + TRETA_YUGA + DVAPARA_YUGA + KALI_YUGA
+
+"""Days of creation (Biblical Genesis): 6 days"""
+const GENESIS_DAYS = 6
+
+"""Norse Yggdrasil: 9 realms"""
+const YGGDRASIL_REALMS = 9
+
+# ============================================================================
+# ADVANCED MATHEMATICAL CONSTANTS
+# ============================================================================
+
+"""Feigenbaum constant (δ) - onset of chaos"""
+const FEIGENBAUM_δ = 4.66920160910299...
+
+"""Feigenbaum constant (α) - bifurcation scaling"""
+const FEIGENBAUM_α = 2.50290787509589...
+
+"""Khinchin's constant"""
+const KHINCHIN = 2.6854520010...
+
+"""Glaisher–Kinkelin constant"""
+const GLAISHER_KINKELIN = 1.28242712...
+
+"""Omega constant (W(1))"""
+const OMEGA = 0.56714329040726...
+
+# ============================================================================
+# E₈ LATTICE & EXCEPTIONAL GROUPS
+# ============================================================================
+
+"""E₈ root system dimension"""
+const E8_DIMENSION = 8
+
+"""E₈ root count"""
+const E8_ROOT_COUNT = 240
+
+"""E₈ reflection hyperplanes"""
+const E8_HYPERPLANES = 120
+
+"""Monster group order (largest sporadic group)"""
+const MONSTER_ORDER = 808017424794512875886459904961710757005754368000000000
+
+"""Leech lattice dimension"""
+const LEECH_DIMENSION = 24
+
+"""Leech lattice kissing number"""
+const LEECH_KISSING = 196560
+
+# ============================================================================
+# INFORMATION & BIT SYSTEMS
+# ============================================================================
+
+"""Binary digit base"""
+const BINARY_BASE = 2
+
+"""Hexadecimal digit base"""
+const HEX_BASE = 16
+
+"""Quaternary base (2-bit)"""
+const QUATERNARY_BASE = 4
+
+"""Octal base"""
+const OCTAL_BASE = 8
+
+"""Decimal base"""
+const DECIMAL_BASE = 10
+
+"""Duodecimal base (12 - highly composite)"""
+const DUODECIMAL_BASE = 12
+
+"""Sexagesimal base (60 - Babylonian)"""
+const SEXAGESIMAL_BASE = 60
+
+"""Vigesimal base (20 - Mayan)"""
+const VIGESIMAL_BASE = 20
+
+# ============================================================================
+# PUBLIC FUNCTIONS
+# ============================================================================
+
+"""
+    golden_ratio() -> Float64
+
+Return the golden ratio φ.
+"""
+function golden_ratio()::Float64
+    return φ
+end
+
+"""
+    planck_units() -> Dict
+
+Return dictionary of Planck units.
+"""
+function planck_units()::Dict
+    return Dict(
+        "mass" => m_planck,
+        "length" => l_planck,
+        "time" => t_planck,
+        "temperature" => T_planck
+    )
+end
+
+"""
+    chakra_frequencies() -> Vector{Float64}
+
+Return all chakra frequencies.
+"""
+function chakra_frequencies()::Vector{Float64}
+    return copy(CHAKRA_FREQUENCIES)
+end
+
+"""
+    sacred_cycle_years(cycle::String) -> Float64
+
+Get duration of a sacred cycle in years.
+"""
+function sacred_cycle_years(cycle::String)::Float64
+    cycles = Dict(
+        "metonic" => METONIC_CYCLE,
+        "saros" => SAROS_CYCLE,
+        "cosmic" => COSMIC_YEAR,
+        "precession" => PRECESSION_CYCLE,
+        "saturn" => SATURN_YEAR,
+        "venus" => VENUS_CYCLE / 365.25
+    )
+    return get(cycles, lowercase(cycle), 0.0)
+end
+
+"""
+    yuga_cycle() -> Dict
+
+Return Vedic yuga cycle information.
+"""
+function yuga_cycle()::Dict
+    return Dict(
+        "satya" => SATYA_YUGA,
+        "treta" => TRETA_YUGA,
+        "dvapara" => DVAPARA_YUGA,
+        "kali" => KALI_YUGA,
+        "total" => MAHA_YUGA
+    )
+end
 
 end # module SacredGeometry

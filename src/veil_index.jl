@@ -1,471 +1,239 @@
 """
-veil_index.jl
-
-Complete catalog lookup, search, and export system for 777 veils.
-Provides fast access by ID, tier, opcode, or keyword search.
+    VeilIndex - Comprehensive veil lookup and search system
+    
+Provides efficient indexing and querying across all 777 veils.
 """
 
 module VeilIndex
 
+using JSON
 include("veils_777.jl")
 using .Veils777
-using JSON3
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# LOOKUP FUNCTIONS
-# ═══════════════════════════════════════════════════════════════════════════════
+export lookup_veil, search_veils, veil_by_tier, veil_by_opcode, 
+       export_veil_json, veil_by_tag, count_veils_in_tier
 
-"""
-    lookup_veil(veil_id::Int) :: VeilDefinition
+# ============================================================================
+# INDEXING STRUCTURES
+# ============================================================================
 
-Retrieve a veil definition by ID. Returns placeholder if not yet defined.
-"""
-function lookup_veil(veil_id::Int)::VeilDefinition
-    if haskey(VEIL_CATALOG, veil_id)
-        return VEIL_CATALOG[veil_id]
-    else
-        return create_placeholder_veil(veil_id)
+# Build indices at module load time
+const VEIL_ID_INDEX = Dict(v.id => v for v in Veils777.get_all_veils())
+const VEIL_OPCODE_INDEX = Dict(v.opcode => v for v in Veils777.get_all_veils())
+const VEIL_TIER_INDEX = let
+    idx = Dict{String, Vector{VeilDefinition}}()
+    for tier in keys(Veils777.VEIL_TIER_RANGES)
+        idx[tier] = Veils777.list_veils_by_tier(tier)
     end
+    idx
+end
+
+# ============================================================================
+# LOOKUP FUNCTIONS
+# ============================================================================
+
+"""
+    lookup_veil(veil_id::Int) -> Union{VeilDefinition, Nothing}
+
+Lookup a single veil by ID.
+Returns nothing if veil not found.
+"""
+function lookup_veil(veil_id::Int)::Union{VeilDefinition, Nothing}
+    get(VEIL_ID_INDEX, veil_id, nothing)
 end
 
 """
-    search_veils(query::String) :: Vector{VeilDefinition}
+    veil_by_opcode(opcode::UInt16) -> Union{VeilDefinition, Nothing}
 
-Search for veils by name, description, tags, or equation.
-Returns all matching veils (case-insensitive).
+Lookup a veil by its opcode.
+"""
+function veil_by_opcode(opcode::UInt16)::Union{VeilDefinition, Nothing}
+    get(VEIL_OPCODE_INDEX, opcode, nothing)
+end
+
+"""
+    veil_by_tier(tier::String) -> Vector{VeilDefinition}
+
+Get all veils in a specified tier.
+"""
+function veil_by_tier(tier::String)::Vector{VeilDefinition}
+    get(VEIL_TIER_INDEX, tier, VeilDefinition[])
+end
+
+"""
+    search_veils(query::String) -> Vector{VeilDefinition}
+
+Search for veils by name, description, or tags.
+Returns all matching veils.
 """
 function search_veils(query::String)::Vector{VeilDefinition}
     query_lower = lowercase(query)
     results = VeilDefinition[]
     
-    # Search all veils in catalog
-    for (id, veil) in VEIL_CATALOG
-        # Check multiple fields
-        if (lowercase(veil.name) |> contains(query_lower)) ||
-           (lowercase(veil.description) |> contains(query_lower)) ||
-           (lowercase(veil.category) |> contains(query_lower)) ||
-           (any(lowercase(tag) |> contains(query_lower) for tag in veil.tags))
+    for veil in Veils777.get_all_veils()
+        # Search in name
+        if contains(lowercase(veil.name), query_lower)
             push!(results, veil)
+            continue
         end
-    end
-    
-    # Also search placeholders for unmapped IDs if query is numeric
-    if tryparse(Int, query) !== nothing
-        id = parse(Int, query)
-        if 1 <= id <= 777 && !haskey(VEIL_CATALOG, id)
-            push!(results, create_placeholder_veil(id))
-        end
-    end
-    
-    # Sort by ID
-    sort!(results, by=v -> v.id)
-    return results
-end
-
-"""
-    veil_by_tier(tier::String) :: Vector{VeilDefinition}
-
-Retrieve all veils in a specific tier.
-Returns empty vector if tier not found.
-"""
-function veil_by_tier(tier::String)::Vector{VeilDefinition}
-    # Normalize tier name
-    tier_lower = lowercase(replace(tier, r"[\s_-]" => "_"))
-    
-    if !haskey(VEIL_TIERS, tier_lower)
-        return VeilDefinition[]
-    end
-    
-    start_id, end_id = VEIL_TIERS[tier_lower]
-    results = VeilDefinition[]
-    
-    for id in start_id:end_id
-        push!(results, lookup_veil(id))
-    end
-    
-    return results
-end
-
-"""
-    veil_by_opcode(opcode::String) :: Union{VeilDefinition, Nothing}
-
-Retrieve a veil by its hex opcode.
-"""
-function veil_by_opcode(opcode::String)::Union{VeilDefinition, Nothing}
-    for (id, veil) in VEIL_CATALOG
-        if uppercase(veil.opcode) == uppercase(opcode)
-            return veil
-        end
-    end
-    return nothing
-end
-
-"""
-    veil_by_tag(tag::String) :: Vector{VeilDefinition}
-
-Retrieve all veils with a specific tag.
-"""
-function veil_by_tag(tag::String)::Vector{VeilDefinition}
-    tag_lower = lowercase(tag)
-    results = VeilDefinition[]
-    
-    for (id, veil) in VEIL_CATALOG
-        if any(lowercase(t) == tag_lower for t in veil.tags)
+        
+        # Search in description
+        if contains(lowercase(veil.description), query_lower)
             push!(results, veil)
+            continue
         end
-    end
-    
-    return sort!(results, by=v -> v.id)
-end
-
-"""
-    veil_by_ffi_language(language::String) :: Vector{VeilDefinition}
-
-Retrieve all veils implemented in a specific language.
-"""
-function veil_by_ffi_language(language::String)::Vector{VeilDefinition}
-    lang_lower = lowercase(language)
-    results = VeilDefinition[]
-    
-    for (id, veil) in VEIL_CATALOG
-        if lowercase(veil.ffi_language) == lang_lower
-            push!(results, veil)
-        end
-    end
-    
-    return sort!(results, by=v -> v.id)
-end
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# AGGREGATION FUNCTIONS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-"""
-    get_all_tiers() :: Vector{String}
-
-Return list of all veil tier names.
-"""
-function get_all_tiers()::Vector{String}
-    return collect(keys(VEIL_TIERS))
-end
-
-"""
-    get_tier_bounds(tier::String) :: Union{Tuple{Int,Int}, Nothing}
-
-Get the start and end IDs for a tier.
-"""
-function get_tier_bounds(tier::String)::Union{Tuple{Int,Int}, Nothing}
-    tier_lower = lowercase(replace(tier, r"[\s_-]" => "_"))
-    if haskey(VEIL_TIERS, tier_lower)
-        return VEIL_TIERS[tier_lower]
-    end
-    return nothing
-end
-
-"""
-    count_implemented_veils() :: Int
-
-Count how many veils are currently implemented in the catalog.
-"""
-function count_implemented_veils()::Int
-    return length(VEIL_CATALOG)
-end
-
-"""
-    count_total_veils() :: Int
-
-Return total number of veils (777).
-"""
-function count_total_veils()::Int
-    return 777
-end
-
-"""
-    get_completion_percentage() :: Float64
-
-Return percentage of veils currently implemented.
-"""
-function get_completion_percentage()::Float64
-    return (count_implemented_veils() / count_total_veils()) * 100.0
-end
-
-"""
-    get_implementation_by_language() :: Dict{String, Int}
-
-Count veils implemented in each language.
-"""
-function get_implementation_by_language()::Dict{String, Int}
-    counts = Dict{String, Int}()
-    
-    for (id, veil) in VEIL_CATALOG
-        lang = veil.ffi_language
-        counts[lang] = get(counts, lang, 0) + 1
-    end
-    
-    return counts
-end
-
-"""
-    get_implementation_by_tier() :: Dict{String, Int}
-
-Count implemented veils in each tier.
-"""
-function get_implementation_by_tier()::Dict{String, Int}
-    counts = Dict{String, Int}()
-    
-    for (id, veil) in VEIL_CATALOG
-        tier = veil.tier
-        counts[tier] = get(counts, tier, 0) + 1
-    end
-    
-    return counts
-end
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# JSON EXPORT FUNCTIONS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-"""
-    veil_to_dict(veil::VeilDefinition) :: Dict
-
-Convert a VeilDefinition to a dictionary for JSON export.
-"""
-function veil_to_dict(veil::VeilDefinition)::Dict
-    return Dict(
-        "id" => veil.id,
-        "name" => veil.name,
-        "tier" => veil.tier,
-        "description" => veil.description,
-        "equation" => veil.equation,
-        "category" => veil.category,
-        "opcode" => veil.opcode,
-        "ffi_language" => veil.ffi_language,
-        "parameters" => [Dict("name" => pair.first, "type" => pair.second) 
-                        for pair in veil.parameters],
-        "outputs" => [Dict("name" => pair.first, "type" => pair.second) 
-                     for pair in veil.outputs],
-        "implementation_file" => veil.implementation_file,
-        "tags" => veil.tags,
-        "references" => veil.references,
-        "sacred_mapping" => veil.sacred_mapping
-    )
-end
-
-"""
-    export_veil_json(filename::String = "veils_777.json") :: String
-
-Export all implemented veils to a JSON file.
-Returns the path to the created file.
-"""
-function export_veil_json(filename::String = "veils_777.json")::String
-    # Collect all veil data
-    veils_data = Dict(
-        "metadata" => Dict(
-            "total_veils" => 777,
-            "implemented_veils" => count_implemented_veils(),
-            "completion_percentage" => get_completion_percentage(),
-            "exported_at" => string(now()),
-            "genesis_time" => SacredGeometry.VEIL_GENESIS_TIME
-        ),
-        "implementation_by_language" => get_implementation_by_language(),
-        "implementation_by_tier" => get_implementation_by_tier(),
-        "tiers" => collect(keys(VEIL_TIERS)),
-        "veils" => [veil_to_dict(veil) for (id, veil) in sort(VEIL_CATALOG)]
-    )
-    
-    # Write JSON file
-    open(filename, "w") do f
-        JSON3.write(f, veils_data)
-    end
-    
-    return abspath(filename)
-end
-
-"""
-    export_veil_markdown(filename::String = "VEILS_CATALOG.md") :: String
-
-Export all implemented veils to a markdown file for documentation.
-"""
-function export_veil_markdown(filename::String = "VEILS_CATALOG.md")::String
-    lines = String[]
-    
-    push!(lines, "# 🤍🗿⚖️🕊️🌄 THE 777 VEILS - COMPLETE CATALOG")
-    push!(lines, "")
-    push!(lines, "**Generated**: $(now())")
-    push!(lines, "**Total Veils**: 777")
-    push!(lines, "**Implemented**: $(count_implemented_veils()) ($(round(get_completion_percentage(), digits=1))%)")
-    push!(lines, "")
-    
-    # Statistics
-    push!(lines, "## STATISTICS")
-    push!(lines, "")
-    push!(lines, "### By Language")
-    push!(lines, "")
-    for (lang, count) in sort(get_implementation_by_language())
-        push!(lines, "- **$lang**: $count veils")
-    end
-    push!(lines, "")
-    
-    push!(lines, "### By Tier")
-    push!(lines, "")
-    for tier in sort(get_all_tiers())
-        count = length(veil_by_tier(tier))
-        if count > 0
-            push!(lines, "- **$tier**: $count veils")
-        end
-    end
-    push!(lines, "")
-    
-    # Organized by tier
-    for tier in sort(get_all_tiers())
-        veils = veil_by_tier(tier)
-        if !isempty(veils)
-            bounds = get_tier_bounds(tier)
-            push!(lines, "## $(uppercase(tier)) (Veils $(bounds[1])–$(bounds[2]))")
-            push!(lines, "")
-            
-            for veil in veils
-                push!(lines, "### Veil #$(veil.id): $(veil.name)")
-                push!(lines, "")
-                push!(lines, "**Description**: $(veil.description)")
-                push!(lines, "")
-                push!(lines, "**Equation**: `$(veil.equation)`")
-                push!(lines, "")
-                push!(lines, "**Opcode**: `$(veil.opcode)`")
-                push!(lines, "")
-                push!(lines, "**FFI Language**: $(veil.ffi_language)")
-                push!(lines, "")
-                
-                if !isempty(veil.parameters)
-                    push!(lines, "**Parameters**:")
-                    for param in veil.parameters
-                        push!(lines, "- `$(param.first)` : $(param.second)")
-                    end
-                    push!(lines, "")
-                end
-                
-                if !isempty(veil.outputs)
-                    push!(lines, "**Outputs**:")
-                    for output in veil.outputs
-                        push!(lines, "- `$(output.first)` : $(output.second)")
-                    end
-                    push!(lines, "")
-                end
-                
-                if !isempty(veil.tags)
-                    push!(lines, "**Tags**: `$(join(veil.tags, "`, `"))`")
-                    push!(lines, "")
-                end
-                
-                if !isempty(veil.sacred_mapping)
-                    push!(lines, "**Sacred Mapping**: $(veil.sacred_mapping)")
-                    push!(lines, "")
-                end
-                
-                push!(lines, "---")
-                push!(lines, "")
+        
+        # Search in tags
+        for tag in veil.tags
+            if contains(lowercase(tag), query_lower)
+                push!(results, veil)
+                break
             end
         end
     end
     
-    # Write markdown file
+    return results
+end
+
+"""
+    veil_by_tag(tag::String) -> Vector{VeilDefinition}
+
+Get all veils with a specific tag.
+"""
+function veil_by_tag(tag::String)::Vector{VeilDefinition}
+    tag_lower = lowercase(tag)
+    filter(v -> any(lowercase(t) == tag_lower for t in v.tags), 
+           Veils777.get_all_veils())
+end
+
+# ============================================================================
+# STATISTICAL FUNCTIONS
+# ============================================================================
+
+"""
+    count_veils_in_tier(tier::String) -> Int
+
+Count the number of veils in a tier.
+"""
+function count_veils_in_tier(tier::String)::Int
+    length(veil_by_tier(tier))
+end
+
+"""
+    total_veil_count() -> Int
+
+Get total number of veils (should always be 777).
+"""
+function total_veil_count()::Int
+    length(Veils777.get_all_veils())
+end
+
+"""
+    get_veil_categories() -> Vector{String}
+
+Get all tier/category names.
+"""
+function get_veil_categories()::Vector{String}
+    collect(keys(Veils777.VEIL_TIER_RANGES))
+end
+
+# ============================================================================
+# EXPORT FUNCTIONS
+# ============================================================================
+
+"""
+    export_veil_json(filename::String = "veils_777.json") -> String
+
+Export all 777 veils to JSON file.
+Returns the JSON string.
+"""
+function export_veil_json(filename::String = "veils_777.json")::String
+    veils_data = Dict[]
+    
+    for veil in Veils777.get_all_veils()
+        veil_dict = Dict(
+            "id" => veil.id,
+            "name" => veil.name,
+            "tier" => veil.tier,
+            "description" => veil.description,
+            "equation" => veil.equation,
+            "category" => veil.category,
+            "opcode" => string(veil.opcode; base=16),
+            "ffi_language" => veil.ffi_language,
+            "parameters" => veil.parameters,
+            "output_type" => veil.output_type,
+            "implementation_file" => veil.implementation_file,
+            "tags" => veil.tags,
+            "references" => veil.references
+        )
+        
+        if !isnothing(veil.sacred_mapping)
+            veil_dict["sacred_mapping"] = veil.sacred_mapping
+        end
+        
+        push!(veils_data, veil_dict)
+    end
+    
+    # Create export structure
+    export_dict = Dict(
+        "metadata" => Dict(
+            "total_veils" => total_veil_count(),
+            "tiers" => length(get_veil_categories()),
+            "genesis_time" => "2025-11-11T11:11:00Z",
+            "description" => "The 777 Sacred-Scientific Veils of Ọbàtálá"
+        ),
+        "veils" => veils_data
+    )
+    
+    # Convert to JSON
+    json_str = JSON.json(export_dict)
+    
+    # Write to file
     open(filename, "w") do f
-        write(f, join(lines, "\n"))
+        write(f, json_str)
     end
     
-    return abspath(filename)
-end
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# TESTING & VALIDATION
-# ═══════════════════════════════════════════════════════════════════════════════
-
-"""
-    validate_veil_integrity() :: Tuple{Bool, Vector{String}}
-
-Check veil catalog for consistency issues.
-Returns (is_valid, list_of_errors).
-"""
-function validate_veil_integrity()::Tuple{Bool, Vector{String}}
-    errors = String[]
-    
-    # Check for duplicate IDs
-    ids = [v.id for (id, v) in VEIL_CATALOG]
-    if length(ids) != length(unique(ids))
-        push!(errors, "Duplicate veil IDs found")
-    end
-    
-    # Check for IDs outside 1-777 range
-    for (id, veil) in VEIL_CATALOG
-        if veil.id < 1 || veil.id > 777
-            push!(errors, "Veil #$(veil.id) outside valid range [1, 777]")
-        end
-    end
-    
-    # Check for empty required fields
-    for (id, veil) in VEIL_CATALOG
-        if isempty(veil.name)
-            push!(errors, "Veil #$id: missing name")
-        end
-        if isempty(veil.tier)
-            push!(errors, "Veil #$id: missing tier")
-        end
-        if isempty(veil.opcode)
-            push!(errors, "Veil #$id: missing opcode")
-        end
-    end
-    
-    return (isempty(errors), errors)
+    return json_str
 end
 
 """
-    print_summary() :: Nothing
+    export_veil_summary() -> Dict
 
-Print a summary of the veil catalog status.
+Export summary statistics of all veils.
 """
-function print_summary()::Nothing
-    println("═══════════════════════════════════════════════════════════════════")
-    println("🤍🗿⚖️🕊️🌄 VEIL CATALOG STATUS 🤍🗿⚖️🕊️🌄")
-    println("═══════════════════════════════════════════════════════════════════")
-    println()
-    println("Total Veils: $(count_total_veils())")
-    println("Implemented: $(count_implemented_veils())")
-    println("Completion: $(round(get_completion_percentage(), digits=1))%")
-    println()
-    println("By Language:")
-    for (lang, count) in sort(get_implementation_by_language())
-        println("  $lang: $count")
-    end
-    println()
-    println("By Tier:")
-    for (tier, count) in sort(get_implementation_by_tier())
-        println("  $tier: $count")
-    end
-    println()
+function export_veil_summary()::Dict
+    summary = Dict(
+        "total_veils" => total_veil_count(),
+        "categories" => Dict(),
+        "ffi_languages" => Dict(),
+        "sample_veils" => Dict()
+    )
     
-    is_valid, errors = validate_veil_integrity()
-    if is_valid
-        println("✅ Catalog integrity: VALID")
-    else
-        println("❌ Catalog integrity: INVALID")
-        for err in errors
-            println("  - $err")
+    # Count by tier
+    for tier in get_veil_categories()
+        summary["categories"][tier] = count_veils_in_tier(tier)
+    end
+    
+    # Count by FFI language
+    lang_count = Dict{String, Int}()
+    for veil in Veils777.get_all_veils()
+        lang_count[veil.ffi_language] = get(lang_count, veil.ffi_language, 0) + 1
+    end
+    summary["ffi_languages"] = lang_count
+    
+    # Sample veils from each tier
+    for tier in get_veil_categories()
+        tier_veils = veil_by_tier(tier)
+        if !isempty(tier_veils)
+            sample = first(tier_veils)
+            summary["sample_veils"][tier] = Dict(
+                "id" => sample.id,
+                "name" => sample.name
+            )
         end
     end
-    println()
-    println("═══════════════════════════════════════════════════════════════════")
+    
+    return summary
 end
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# EXPORTS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-export lookup_veil, search_veils, veil_by_tier, veil_by_opcode, veil_by_tag
-export veil_by_ffi_language
-export get_all_tiers, get_tier_bounds
-export count_implemented_veils, count_total_veils, get_completion_percentage
-export get_implementation_by_language, get_implementation_by_tier
-export veil_to_dict, export_veil_json, export_veil_markdown
-export validate_veil_integrity, print_summary
 
 end # module VeilIndex
