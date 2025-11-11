@@ -1,0 +1,78 @@
+# VeilSim Sacred-Scientific Integration
+# TechGnos example demonstrating veil invocation, scoring, and composition
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VEIL 1: PID CONTROLLER (CLASSICAL CONTROL)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@veil(id: 1, parameters: {Kp: 10.0, Ki: 5.0, Kd: 2.0})
+-> result_pid
+
+# Score the PID veil with F1 metric
+@veil_score(f1: 0.95, veil_id: 1, reward: 5.0)
+-> reward_ase
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VEIL 26: GRADIENT DESCENT (MACHINE LEARNING)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@veil(id: 26, parameters: {learning_rate: 0.001, iterations: 100})
+-> result_gd
+
+# Conditional veil execution
+@veil_if(learning_rate_sufficient) {
+    @veil(id: 28, parameters: {beta1: 0.9, beta2: 0.999})  # Adam optimizer
+}
+-> result_adam
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VEIL COMPOSITION: PIPELINE EXECUTION
+# Multiple veils executed in sequence with data flow
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Veil 76: Fourier Transform → Veil 78: FFT → Veil 89: Filter
+@veil(id: 76, parameters: {signal_type: "audio"})
+@veil(id: 78, parameters: {algorithm: "cooley_tukey"})
+@veil(id: 89, parameters: {frequency_cutoff: 1000, order: 5})
+-> result_signal_chain
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VEIL 401: IFÁ BINARY BONES (SACRED GEOMETRY)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@veil(id: 401, parameters: {odù_index: 256})
+-> result_ifa
+
+# Score sacred veil
+@veil_score(f1: 0.99, veil_id: 401, reward: 10.0)
+-> reward_sacred
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VEIL 514: SHOR'S ALGORITHM (QUANTUM COMPUTING)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@veil(id: 514, parameters: {number_to_factor: 15})
+-> result_shor
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MULTI-VEIL CEREMONY: OFFERING & TITHE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Create impact (work value) via veil execution
+@impact(ase: 100.0)
+
+# Tithe distribution across sacred structure
+@tithe(rate: 0.0369)
+
+# Score multiple veils
+@veil_score(f1: 0.92, veil_id: 1, reward: 5.0)
+@veil_score(f1: 0.88, veil_id: 26, reward: 4.4)
+@veil_score(f1: 0.96, veil_id: 401, reward: 4.8)
+
+# Total minted & distributed
+@receipt()
+
+# Print state
+print("Veil system integration complete")
+print("Àṣẹ flowing through 777 veils")
+print("Genesis: 2025-11-11 11:11:11 UTC")
