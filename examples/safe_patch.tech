@@ -1,0 +1,149 @@
+// Safe JSON Patch — No Shell Eval, Schema-Locked, Path-Safe
+// Only allows replace on crossroads_aspect field
+
+@patcher(
+    allowedOps: ["replace"],
+    allowedFields: ["crossroads_aspect"],
+    allowedAspects: ["choice", "gateway", "communication", "transformation", "boundary"]
+) {
+    
+    // 1. PATCH OPERATION TYPE
+    @type PatchOp = {
+        op: "replace",
+        index: uint8,           // 0..84
+        field: "crossroads_aspect",
+        value: Aspect
+    };
+    
+    @type Aspect = "choice" | "gateway" | "communication" | "transformation" | "boundary";
+    
+    @type Entry = {
+        index: uint8,
+        ritual: string,
+        slug: string,
+        crossroads_aspect: Aspect,
+        meaning: string
+    };
+    
+    // 2. VALIDATION RULES
+    @rule validatePatch(ops: PatchOp[]) {
+        @require Array.isArray(ops) "PATCH_NOT_ARRAY";
+        
+        @for op, i in ops {
+            @require op.op == "replace" "INVALID_OP";
+            @require op.index >= 0 && op.index <= 84 "INDEX_OUT_OF_BOUNDS";
+            @require op.field == "crossroads_aspect" "FIELD_NOT_ALLOWED";
+            @require op.value in allowedAspects "INVALID_ASPECT_VALUE";
+        }
+    }
+    
+    @rule validateStream(entries: Entry[]) {
+        @require Array.isArray(entries) "STREAM_NOT_ARRAY";
+        @require entries.length == 85 "STREAM_LENGTH";
+        
+        @for entry, i in entries {
+            @require typeof entry == "object" && entry != null "ENTRY_TYPE";
+            @require entry.index == i "ENTRY_INDEX";
+            @require typeof entry.ritual == "string" "RITUAL_TYPE";
+            @require typeof entry.slug == "string" "SLUG_TYPE";
+            @require typeof entry.crossroads_aspect == "string" "ASPECT_TYPE";
+            @require /^[a-z]+$/.test(entry.slug) "SLUG_FORMAT";
+            @require entry.crossroads_aspect in allowedAspects "ASPECT_INVALID";
+        }
+        
+        // Check slug uniqueness
+        @let slugs = entries.map(e => e.slug);
+        @require slugs.unique().length == slugs.length "SLUG_DUPLICATE";
+    }
+    
+    // 3. APPLY PATCH (ATOMIC)
+    @rule applyPatch(
+        inputPath: string,
+        patchPath: string,
+        outputPath: string
+    ) {
+        // Read and validate input
+        @let entries = readJsonSafe<Entry[]>(inputPath);
+        @call validateStream(entries);
+        
+        // Read and validate patch
+        @let ops = readJsonSafe<PatchOp[]>(patchPath, maxBytes: 65536);
+        @call validatePatch(ops);
+        
+        // Apply operations
+        @for op in ops {
+            entries[op.index][op.field] = op.value;
+        }
+        
+        // Re-validate after patching
+        @call validateStream(entries);
+        
+        // Verify aspect distribution (17 each)
+        @let counts = {
+            choice: 0,
+            gateway: 0,
+            communication: 0,
+            transformation: 0,
+            boundary: 0
+        };
+        
+        @for entry in entries {
+            counts[entry.crossroads_aspect]++;
+        }
+        
+        @for aspect in allowedAspects {
+            @require counts[aspect] == 17 "ASPECT_COUNT_INVALID";
+        }
+        
+        // Atomic write (temp + rename)
+        @let tmpPath = outputPath + ".tmp-" + timestamp().toString(36);
+        @fs.write(tmpPath, JSON.stringify(entries, null, 2), flag: "wx");
+        @fs.rename(tmpPath, outputPath);
+        
+        @emit PatchApplied(
+            input: inputPath,
+            patch: patchPath,
+            output: outputPath,
+            opsCount: ops.length
+        );
+    }
+    
+    // 4. PATH SAFETY HELPERS
+    @rule assertASCIIName(path: string) {
+        @require /^[a-z0-9._-]+$/i.test(path) "INVALID_NAME";
+        @require !path.includes("..") "PATH_TRAVERSAL";
+        @require !path.startsWith("/") "ABSOLUTE_PATH";
+        @require !path.includes("\\") "BACKSLASH_PATH";
+    }
+    
+    @rule safeResolve(base: string, rel: string) -> string {
+        @call assertASCIIName(rel);
+        @let target = path.resolve(base, rel);
+        @let relpath = path.relative(base, target);
+        @require !relpath.startsWith("..") "PATH_ESCAPE";
+        @require !path.isAbsolute(relpath) "ABS_ESCAPE";
+        @return target;
+    }
+    
+    @rule readJsonSafe<T>(file: string, maxBytes: uint32 = 524288) -> T {
+        @let stat = fs.stat(file);
+        @require stat.isFile() "NOT_FILE";
+        @require stat.size <= maxBytes "TOO_LARGE";
+        
+        @let raw = fs.read(file, "utf8");
+        @require /^[\x09\x0a\x0d\x20-\x7e]*$/.test(raw) "NON_ASCII";
+        
+        @let obj = JSON.parse(raw);
+        
+        // Anti-prototype pollution
+        @if typeof obj == "object" && obj != null {
+            @require !("__proto__" in obj) "PROTO_POLLUTION";
+            @require !("constructor" in obj) "CONSTRUCTOR_POLLUTION";
+        }
+        
+        @return obj as T;
+    }
+}
+
+// EXAMPLE USAGE:
+// @call applyPatch("stream1.json", "patch-074-communication.json", "stream1.json");

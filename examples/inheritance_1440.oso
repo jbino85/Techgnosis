@@ -1,0 +1,52 @@
+// inheritance_1440.oso — Sacred 1440 Inheritance Wallet Claim
+// 7×7 badge → Council of 12 → Bínò seal → Ọbàtálá witness
+
+// Step 1: Candidate applies with 7×7 badge proof
+@candidateApply(walletId=42, shrine="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb") {
+    // Requires: IBadgeVerifier.hasSevenBySevenBadge(shrine) == true
+    // Requires: 7 years passed since last claim
+    // Sets wallet state: 1 (Vacant) → 2 (Pending)
+    @emit(event="CandidateApplied", walletId=42, shrine="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb");
+}
+
+// Step 2: Council of 12 approves (each member votes)
+@councilApprove(walletId=42) {
+    // Caller must be one of 12 council members
+    // Sets approval bit in approvalsMask
+    // When popcount(approvalsMask) >= 12, state → 3 (CouncilReady)
+    @emit(event="CouncilVoted", walletId=42, councilMember="@msg.sender");
+}
+
+// Step 3: Bínò final sign (ultimate seal)
+@finalSign(walletId=42) {
+    // Caller must be FINAL_SIGNER (Bínò)
+    // Unlocks vault, transfers ownership
+    // State → 4 (Awarded)
+    @emit(event="FinalSigned", walletId=42, signer="Bínò", witness="Ọbàtálá");
+    
+    // Invoke Ọbàtálá for purity blessing
+    @orisaObatala;
+}
+
+// Step 4: Distribute 25% offering to all 1440 vaults
+@distributeOffering(amount=100000.0) {
+    // 25% = 25000 Aṣẹ split across 1440 vaults
+    // Each vault receives: 25000 / 1440 ≈ 17.36 Aṣẹ
+    // Locked at 11.11% APY (compound daily)
+    @emit(event="OfferingDistributed", totalOffering=100000.0, perVault=17.36);
+}
+
+// Step 5: Claim rewards after 7 years (Sabbath-aware)
+@claimRewards(walletId=42) {
+    // Requires: msg.sender == wallet.winner
+    // Requires: !ISabbath.isSaturdayUTC(block.timestamp)
+    // Accrues yield at 11.11% APY
+    // Transfers accruedRewards to shrine
+    @emit(event="RewardClaimed", walletId=42, reward=11.11);
+    
+    // Record immutable receipt
+    @receipt(hash="0x1440144014401440144014401440144014401440144014401440144014401440");
+}
+
+// Final blessing: Ṣàngó for justice
+@orisaSango

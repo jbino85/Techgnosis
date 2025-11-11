@@ -1,0 +1,214 @@
+// BIPON39 Witness Contract — Immutable Attestation with Revocation
+// Revocable but not upgradeable; multisig admin recommended
+
+@contract WitnessV2(
+    merkleRoot: hash256,
+    streamDigest: hash256,
+    admin: address
+) {
+    
+    // IMMUTABLE STATE
+    @immutable MERKLE_ROOT: hash256;
+    @immutable STREAM_DIGEST: hash256;
+    @immutable STREAM_NAME: string = "esu";
+    @immutable VERSION: uint256 = 1;
+    @immutable ADMIN: address;
+    
+    // MUTABLE STATE (revocation only)
+    @state revoked: bool = false;
+    @state supersededBy: address = null;
+    
+    // EVENTS
+    @event EsuWordlistWitnessed(
+        merkleRoot: hash256,
+        streamDigest: hash256,
+        version: uint256
+    );
+    
+    @event Revoked(
+        by: address,
+        reason: string,
+        timestamp: uint256
+    );
+    
+    @event Superseded(
+        by: address,
+        newWitness: address,
+        timestamp: uint256
+    );
+    
+    @event CommunityVerification(
+        verifier: address,
+        merkleValid: bool,
+        digestValid: bool,
+        timestamp: uint256
+    );
+    
+    // MODIFIERS
+    @modifier onlyAdmin() {
+        @require msg.sender == ADMIN "NOT_ADMIN";
+        _;
+    }
+    
+    @modifier notZero(h: hash256) {
+        @require h != hash256(0) "ZERO_HASH";
+        _;
+    }
+    
+    @modifier notZeroAddress(a: address) {
+        @require a != address(0) "ZERO_ADDRESS";
+        _;
+    }
+    
+    // CONSTRUCTOR
+    @init(
+        merkleRoot: hash256,
+        streamDigest: hash256,
+        admin: address
+    ) {
+        @call notZero(merkleRoot);
+        @call notZero(streamDigest);
+        @call notZeroAddress(admin);
+        
+        MERKLE_ROOT = merkleRoot;
+        STREAM_DIGEST = streamDigest;
+        ADMIN = admin;
+        
+        @emit EsuWordlistWitnessed(
+            merkleRoot: merkleRoot,
+            streamDigest: streamDigest,
+            version: VERSION
+        );
+    }
+    
+    // ADMIN FUNCTIONS
+    @function revoke(reason: string) onlyAdmin {
+        @require !revoked "ALREADY_REVOKED";
+        @require bytes(reason).length > 0 "EMPTY_REASON";
+        @require bytes(reason).length <= 256 "REASON_TOO_LONG";
+        
+        revoked = true;
+        
+        @emit Revoked(
+            by: msg.sender,
+            reason: reason,
+            timestamp: block.timestamp
+        );
+    }
+    
+    @function supersede(newWitness: address) onlyAdmin {
+        @call notZeroAddress(newWitness);
+        @require supersededBy == address(0) "ALREADY_SUPERSEDED";
+        @require newWitness != address(this) "SELF_SUPERSEDE";
+        
+        supersededBy = newWitness;
+        
+        @emit Superseded(
+            by: msg.sender,
+            newWitness: newWitness,
+            timestamp: block.timestamp
+        );
+    }
+    
+    // VIEW FUNCTIONS
+    @view isActive() -> bool {
+        @return !revoked && supersededBy == address(0);
+    }
+    
+    @view getStatus() -> {
+        active: bool,
+        revoked: bool,
+        supersededBy: address,
+        merkleRoot: hash256,
+        streamDigest: hash256
+    } {
+        @return {
+            active: !revoked && supersededBy == address(0),
+            revoked: revoked,
+            supersededBy: supersededBy,
+            merkleRoot: MERKLE_ROOT,
+            streamDigest: STREAM_DIGEST
+        };
+    }
+    
+    // VERIFICATION FUNCTIONS
+    @view verifyMerkleRoot(root: hash256) -> bool {
+        @return root == MERKLE_ROOT;
+    }
+    
+    @view verifyStreamDigest(digest: hash256) -> bool {
+        @return digest == STREAM_DIGEST;
+    }
+    
+    @view verifyInclusion(
+        slug: string,
+        index: uint256,
+        siblings: hash256[],
+        siblingOnLeft: bool[]
+    ) -> bool {
+        @require siblings.length == siblingOnLeft.length "LENGTH_MISMATCH";
+        @require index < 85 "INDEX_OUT_OF_BOUNDS";
+        @require bytes(slug).length > 0 "EMPTY_SLUG";
+        @require bytes(slug).length <= 64 "SLUG_TOO_LONG";
+        
+        // Compute leaf hash
+        @let h = sha256(slug.toBytes());
+        
+        // Walk up the tree
+        @for i in 0..siblings.length {
+            @let sibling = siblings[i];
+            
+            @if siblingOnLeft[i] {
+                h = sha256(sibling + h);
+            } else {
+                h = sha256(h + sibling);
+            }
+        }
+        
+        @return h == MERKLE_ROOT;
+    }
+    
+    // PUBLIC ATTESTATION (anyone can call)
+    @function publishVerification(
+        merkleValid: bool,
+        digestValid: bool
+    ) {
+        @emit CommunityVerification(
+            verifier: msg.sender,
+            merkleValid: merkleValid,
+            digestValid: digestValid,
+            timestamp: block.timestamp
+        );
+    }
+    
+    // SABBATH GATE (Saturday UTC check)
+    @view isSaturday(timestamp: uint256) -> bool {
+        @const EPOCH_OFFSET = 4; // Jan 1, 1970 was Thursday
+        @let daysSinceEpoch = timestamp / 86400;
+        @let dayOfWeek = (daysSinceEpoch + EPOCH_OFFSET) % 7;
+        @return dayOfWeek == 6; // Saturday
+    }
+    
+    @view canDeployOnSabbath(
+        enforceSabbath: bool,
+        councilOverride: bool
+    ) -> bool {
+        @if !enforceSabbath @return true;
+        @if councilOverride @return true;
+        @return isSaturday(block.timestamp);
+    }
+}
+
+// DEPLOYMENT EXAMPLE
+@deploy WitnessV2(
+    merkleRoot: 0x<MERKLE_ROOT_HEX>,
+    streamDigest: 0x<STREAM_DIGEST_HEX>,
+    admin: 0x<MULTISIG_ADDRESS>
+) {
+    @require isSaturday(block.timestamp) "NOT_SATURDAY_UTC";
+    @emit GenesisDeployed(
+        contract: address(this),
+        deployer: msg.sender,
+        timestamp: block.timestamp
+    );
+}

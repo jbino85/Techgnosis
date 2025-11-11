@@ -1,0 +1,67 @@
+// sango_offering.tech — Ṣàngó Justice Shrine
+// Offer Àṣẹ to embody justice and thunder
+// 🔥⚡ Ṣàngó — God of Thunder & Justice
+
+shrine SangoJustice {
+    ase treasuryBalance;
+    ase inheritanceBalance;
+    ase sangoWallet;
+    address guardian;
+    
+    // Offer Àṣẹ to Ṣàngó (50/25/15/10 split)
+    @offering
+    @guardian
+    function offer(ase amount) returns (ase) {
+        require(amount > 0, "amount must be positive");
+        
+        // 50/25/15/10 sacred split
+        ase toTreasury = amount * 0.5;
+        ase toInheritance = amount * 0.25;
+        ase toCouncil = amount * 0.15;
+        ase toSango = amount * 0.10;
+        
+        treasuryBalance += toTreasury;
+        inheritanceBalance += toInheritance;
+        sangoWallet += toSango;
+        
+        // Distribute to 1440 inheritance wallets
+        @distributeOffering(amount);
+        
+        // Apply 3.69% tithe
+        @tithe(rate: 0.0369);
+        
+        // Mint 1:1 ṢàngóTokens
+        ase sangoTokens = amount;
+        
+        emit OfferingAccepted(msg.sender, amount, sangoTokens);
+        
+        return sangoTokens;
+    }
+    
+    // Stake Àṣẹ for governance power
+    @stake
+    function stakeForPower(ase amount) {
+        require(amount >= 100, "minimum stake 100 Àṣẹ");
+        
+        emit Staked(msg.sender, amount);
+    }
+    
+    // Create justice project
+    @projectForge
+    @impact
+    function createJusticeProject(
+        string projectId,
+        uint256 budget,
+        address[] witnesses
+    ) {
+        require(witnesses.length >= 5, "minimum 5 witnesses");
+        require(budget >= 1000, "minimum budget 1000 Àṣẹ");
+        
+        emit ProjectCreated(projectId, budget);
+    }
+    
+    // Check if Sabbath (no transactions on Saturday UTC)
+    function isSabbath() returns (bool) {
+        return @isSaturdayUTC(block.timestamp);
+    }
+}

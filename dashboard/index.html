@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIPỌ̀N39 Genesis Dashboard | Ọbàtálá</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-symbols">🤍🗿⚖️🕊️🌄</div>
+            <h1>ỌBÀTÁLÁ — GENESIS COMMAND CENTER</h1>
+            <p class="subtitle">Bínò ÈL Guà Ọmọ Kọ́dà Àṣẹ</p>
+            <div class="wallet-section">
+                <button id="connectWallet" class="wallet-btn">Connect Phantom Wallet</button>
+                <div id="walletInfo" class="wallet-info" style="display:none;">
+                    <span id="walletAddress"></span>
+                    <span id="walletBalance"></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Countdown -->
+        <section class="countdown-section">
+            <h2>⏳ TIME TO GENESIS</h2>
+            <div class="countdown" id="countdown">
+                <div class="time-unit">
+                    <span class="time-value" id="days">00</span>
+                    <span class="time-label">days</span>
+                </div>
+                <div class="time-unit">
+                    <span class="time-value" id="hours">00</span>
+                    <span class="time-label">hours</span>
+                </div>
+                <div class="time-unit">
+                    <span class="time-value" id="minutes">00</span>
+                    <span class="time-label">minutes</span>
+                </div>
+                <div class="time-unit">
+                    <span class="time-value" id="seconds">00</span>
+                    <span class="time-label">seconds</span>
+                </div>
+            </div>
+            <p class="genesis-time">Genesis: <strong>November 11, 2025 11:11:11.11 UTC</strong></p>
+            <div class="genesis-controls">
+                <button id="testAudioBtn" class="action-btn">🎤 Test Audio Setup</button>
+                <button id="practiceBreathBtn" class="action-btn">🌬️ Practice Breath</button>
+            </div>
+        </section>
+
+        <!-- Wallet & Funding -->
+        <section class="funding-section">
+            <h2>💰 ANCHOR FUNDING</h2>
+            <div class="funding-grid">
+                <div class="funding-card">
+                    <h3>₿ Bitcoin</h3>
+                    <p class="funding-amount">~$50 USD</p>
+                    <p class="funding-desc">OP_RETURN transaction</p>
+                    <input type="text" placeholder="BTC address" id="btcAddress" class="wallet-input">
+                    <button class="fund-btn" data-chain="bitcoin">Fund Bitcoin</button>
+                </div>
+                <div class="funding-card">
+                    <h3>🌐 Arweave</h3>
+                    <p class="funding-amount">~$10 USD</p>
+                    <p class="funding-desc">Permanent storage</p>
+                    <input type="text" placeholder="AR address" id="arAddress" class="wallet-input">
+                    <button class="fund-btn" data-chain="arweave">Fund Arweave</button>
+                </div>
+                <div class="funding-card">
+                    <h3>Ξ Ethereum</h3>
+                    <p class="funding-amount">~$100 USD</p>
+                    <p class="funding-desc">Smart contract deploy</p>
+                    <input type="text" placeholder="ETH address" id="ethAddress" class="wallet-input">
+                    <button class="fund-btn" data-chain="ethereum">Fund Ethereum</button>
+                </div>
+                <div class="funding-card phantom-card">
+                    <h3>〰️ Sui (Phantom)</h3>
+                    <p class="funding-amount">~$20 USD</p>
+                    <p class="funding-desc">Move object creation</p>
+                    <div id="suiWalletStatus">
+                        <span id="suiAddress">Not connected</span>
+                        <span id="suiBalance"></span>
+                    </div>
+                    <button class="fund-btn primary" id="paySuiBtn" disabled>Pay for Sui Anchor</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- BIPON39 Mnemonic Generator -->
+        <section class="mnemonic-section">
+            <h2>🔑 BIPON39 MNEMONIC GENERATOR</h2>
+            <div class="mnemonic-controls">
+                <label>
+                    Mode:
+                    <select id="mnemonicMode">
+                        <option value="256">256-word base</option>
+                        <option value="2048" selected>2048-word extended</option>
+                    </select>
+                </label>
+                <label>
+                    Entropy:
+                    <select id="mnemonicEntropy">
+                        <option value="128" selected>128 bits (12 words)</option>
+                        <option value="160">160 bits (15 words)</option>
+                        <option value="192">192 bits (18 words)</option>
+                        <option value="224">224 bits (21 words)</option>
+                        <option value="256">256 bits (24 words)</option>
+                    </select>
+                </label>
+                <label>
+                    Passphrase (optional):
+                    <input type="password" id="mnemonicPass" placeholder="Ọ̀RÍ passphrase">
+                </label>
+                <button id="generateMnemonic" class="action-btn primary">Generate Mnemonic</button>
+            </div>
+            <div id="mnemonicOutput" class="mnemonic-output" style="display:none;">
+                <h3>Your Mnemonic (SAVE THIS SECURELY):</h3>
+                <textarea id="mnemonicWords" readonly></textarea>
+                <div class="mnemonic-info">
+                    <p><strong>Seed:</strong> <code id="mnemonicSeed"></code></p>
+                    <p><strong>Primary Odù:</strong> <span id="mnemonicOdu"></span></p>
+                    <p><strong>Elemental Signature:</strong> <span id="mnemonicElements"></span></p>
+                </div>
+                <div class="mnemonic-actions">
+                    <button id="downloadMnemonic" class="action-btn">💾 Download</button>
+                    <button id="copyMnemonic" class="action-btn">📋 Copy</button>
+                    <button id="showQR" class="action-btn">📱 QR Code</button>
+                </div>
+                <div id="qrCode" class="qr-container" style="display:none;"></div>
+            </div>
+        </section>
+
+        <!-- Token Distribution -->
+        <section class="token-section">
+            <h2>💎 TOKEN DISTRIBUTION</h2>
+            <div class="token-grid">
+                <div class="token-card perfect">
+                    <h3>Àṣẹ (Perfect)</h3>
+                    <div class="token-amount">1440</div>
+                    <p>Wallet #0001</p>
+                    <p class="token-desc">Perfect seed, complete power</p>
+                    <div class="flaw-status">✓ No Flaw</div>
+                </div>
+                <div class="token-card flawed">
+                    <h3>Ase (Flawed)</h3>
+                    <div class="token-amount">1440</div>
+                    <p>Wallets #0002–#1440</p>
+                    <p class="token-desc">1 Ase each, awaiting redemption</p>
+                    <div class="flaw-status">⚠ Ọbàtálá's Flaw</div>
+                </div>
+            </div>
+            <div class="total-supply">
+                <strong>Total Supply at Genesis:</strong> 2880 tokens
+            </div>
+        </section>
+
+        <!-- Execution Workflow -->
+        <section class="execution-section">
+            <h2>⚡ GENESIS EXECUTION WORKFLOW</h2>
+            <div class="workflow-steps">
+                <div class="workflow-step" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Pre-flight Checks</h3>
+                        <button class="step-btn" id="runPreflight">Run Preflight</button>
+                        <div class="step-status" id="preflightStatus">Pending</div>
+                    </div>
+                </div>
+                <div class="workflow-step" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Generate Mnemonic</h3>
+                        <button class="step-btn" id="stepGenerateMnemonic">Generate</button>
+                        <div class="step-status" id="mnemonicStatus">Pending</div>
+                    </div>
+                </div>
+                <div class="workflow-step" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Fund Anchor Chains</h3>
+                        <button class="step-btn" id="stepFundChains">Fund All</button>
+                        <div class="step-status" id="fundingStatus">Pending</div>
+                    </div>
+                </div>
+                <div class="workflow-step" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>Record Genesis Audio</h3>
+                        <button class="step-btn" id="stepRecordAudio">Record</button>
+                        <div class="step-status" id="audioStatus">Pending</div>
+                    </div>
+                </div>
+                <div class="workflow-step" data-step="5">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h3>Wait for Genesis Time</h3>
+                        <button class="step-btn" disabled>Auto-execute at 11:11:11.11</button>
+                        <div class="step-status" id="waitStatus">Waiting</div>
+                    </div>
+                </div>
+                <div class="workflow-step" data-step="6">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <h3>Execute Genesis</h3>
+                        <button class="step-btn primary" id="executeGenesis" disabled>EXECUTE</button>
+                        <div class="step-status" id="genesisStatus">Not Started</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Files & Documentation -->
+        <section class="files-section">
+            <h2>📜 GENESIS FILES</h2>
+            <div class="file-grid">
+                <div class="file-card">
+                    <h3>🔧 Technical (v8)</h3>
+                    <ul>
+                        <li><a href="../genesis_handshake_v8.tech" download>genesis_handshake_v8.tech</a></li>
+                        <li><a href="../whisper_ase_v8.jl" download>whisper_ase_v8.jl</a></li>
+                        <li><a href="../examples/stream_validator.tech" download>stream_validator.tech</a></li>
+                        <li><a href="../examples/safe_patch.tech" download>safe_patch.tech</a></li>
+                        <li><a href="../examples/witness_contract.tech" download>witness_contract.tech</a></li>
+                        <li><a href="../examples/ci_pipeline.tech" download>ci_pipeline.tech</a></li>
+                    </ul>
+                </div>
+                <div class="file-card">
+                    <h3>📖 Documentation</h3>
+                    <ul>
+                        <li><a href="../OBATALA_FINAL_AUDIT_v8.md" download>OBATALA_FINAL_AUDIT_v8.md</a></li>
+                        <li><a href="../OBATALA_FINAL_AUDIT.md" download>OBATALA_FINAL_AUDIT.md</a></li>
+                        <li><a href="../COMPLETE_SPECIFICATION.md" download>COMPLETE_SPECIFICATION.md</a></li>
+                        <li><a href="../GENESIS_CHECKLIST.md" download>GENESIS_CHECKLIST.md</a></li>
+                        <li><a href="../MANIFEST.md" download>MANIFEST.md</a></li>
+                    </ul>
+                </div>
+                <div class="file-card">
+                    <h3>💫 Examples</h3>
+                    <ul>
+                        <li><a href="../examples/inheritance.tech" download>inheritance.tech</a></li>
+                        <li><a href="../examples/sango_offering.tech" download>sango_offering.tech</a></li>
+                        <li><a href="../examples/veilsim.tech" download>veilsim.tech</a></li>
+                    </ul>
+                </div>
+                <div class="file-card">
+                    <h3>🏗️ Source Code</h3>
+                    <ul>
+                        <li><a href="../src/" target="_blank">src/ (view directory)</a></li>
+                        <li><a href="../test/" target="_blank">test/ (view directory)</a></li>
+                        <li><a href="../docs/" target="_blank">docs/ (view directory)</a></li>
+                        <li><a href="../ffi/" target="_blank">ffi/ (view directory)</a></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Preflight Checklist -->
+        <section class="checklist-section">
+            <h2>✓ PREFLIGHT CHECKLIST</h2>
+            <div class="checklist">
+                <label class="checklist-item">
+                    <input type="checkbox" id="check1">
+                    <span>World ID verified (world.id/bino.1111)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check2">
+                    <span>Audio recording ready (genesis_whisper.wav)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check3">
+                    <span>Whisper-cpp installed and tested</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check4">
+                    <span>Julia runtime configured</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check5">
+                    <span>Bitcoin wallet funded for OP_RETURN</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check6">
+                    <span>Arweave wallet funded</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check7">
+                    <span>Ethereum contract deployed (0xAseGenesis)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check8">
+                    <span>Sui wallet connected (Phantom)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check9">
+                    <span>Device synchronized (Samsung Galaxy Z Fold V7)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check10">
+                    <span>Breath practice complete</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check11">
+                    <span>BIPON39 mnemonic generated and secured</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" id="check12">
+                    <span>All .tech files validated</span>
+                </label>
+            </div>
+        </section>
+
+        <!-- Chain Anchoring Status -->
+        <section class="chains-section">
+            <h2>⚓ CHAIN ANCHORING STATUS</h2>
+            <div class="chain-grid">
+                <div class="chain-card">
+                    <h3>₿ Bitcoin</h3>
+                    <p class="chain-data">OP_RETURN: <code>0xAse1440</code></p>
+                    <div class="chain-status pending">Pending</div>
+                    <button class="anchor-btn" data-chain="bitcoin">Anchor Now</button>
+                </div>
+                <div class="chain-card">
+                    <h3>🌐 Arweave</h3>
+                    <p class="chain-data">TX: <code>genesis_1440</code></p>
+                    <div class="chain-status pending">Pending</div>
+                    <button class="anchor-btn" data-chain="arweave">Anchor Now</button>
+                </div>
+                <div class="chain-card">
+                    <h3>Ξ Ethereum</h3>
+                    <p class="chain-data">Contract: <code>0xAseGenesis</code></p>
+                    <div class="chain-status pending">Pending</div>
+                    <button class="anchor-btn" data-chain="ethereum">Anchor Now</button>
+                </div>
+                <div class="chain-card">
+                    <h3>〰️ Sui</h3>
+                    <p class="chain-data">Object: <code>ase_1440</code></p>
+                    <div class="chain-status pending">Pending</div>
+                    <button class="anchor-btn" data-chain="sui">Anchor Now</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- System Logs -->
+        <section class="logs-section">
+            <h2>📊 SYSTEM LOGS</h2>
+            <div class="logs-container">
+                <div class="log-controls">
+                    <button id="clearLogs" class="action-btn">Clear Logs</button>
+                    <button id="exportLogs" class="action-btn">Export Logs</button>
+                    <label>
+                        <input type="checkbox" id="autoScroll" checked> Auto-scroll
+                    </label>
+                </div>
+                <div id="logOutput" class="log-output"></div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>Àṣẹ. Àṣẹ. Àṣẹ.</p>
+            <p class="footer-symbols">🤍🗿⚖️🕊️🌄</p>
+            <p class="version">Genesis Dashboard v8.0 | Thread: <a href="https://ampcode.com/threads/T-0147eaad-f804-488c-aae1-c4743e504919" target="_blank">T-0147eaad</a></p>
+        </footer>
+    </div>
+
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+// veilsim.tech — VeilSim F1 Scoring System
+// If F1 > 0.9, mint 5 Àṣẹ
+// SimaaS Hospital — Simulation as a Service
+
+shrine VeilSimScoring {
+    ase rewardsPool;
+    uint256 totalSimulations;
+    
+    // Run VeilSim and mint Àṣẹ if F1 > 0.9
+    @veil
+    @impact
+    function runSimulation(
+        uint16 veilId,
+        ase f1Target
+    ) returns (ase) {
+        require(f1Target >= 0.9, "F1 target must be >= 0.9");
+        
+        // Execute VeilSim (Julia FFI)
+        ase f1Score = @veilSim(veilId, f1Target);
+        
+        ase reward = 0;
+        
+        if (f1Score > 0.9) {
+            // Mint 5 Àṣẹ
+            reward = 5.0;
+            
+            @mint(reward);
+            
+            // Apply tithe
+            ase titheAmount = reward * 0.0369;
+            @tithe(rate: 0.0369);
+            
+            reward = reward - titheAmount;
+        }
+        
+        totalSimulations++;
+        
+        emit SimulationCompleted(veilId, f1Score, reward);
+        
+        return reward;
+    }
+    
+    // Batch run multiple simulations
+    @veil
+    @impact
+    function batchSimulations(
+        uint16[] veilIds,
+        ase f1Target
+    ) returns (ase) {
+        ase totalReward = 0;
+        
+        for (uint256 i = 0; i < veilIds.length; i++) {
+            ase reward = runSimulation(veilIds[i], f1Target);
+            totalReward += reward;
+        }
+        
+        return totalReward;
+    }
+    
+    // PID controller tuning for VeilSim
+    @veil
+    function tunePID(
+        uint16 veilId,
+        ase kp,
+        ase ki,
+        ase kd
+    ) {
+        require(kp > 0 && ki > 0 && kd > 0, "PID coefficients must be positive");
+        
+        @veilTunePID(veilId, kp, ki, kd);
+        
+        emit PIDTuned(veilId, kp, ki, kd);
+    }
+}

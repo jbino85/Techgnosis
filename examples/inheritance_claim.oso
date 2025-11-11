@@ -1,0 +1,52 @@
+// inheritance_claim.oso — 1440 Inheritance Wallet Claim Flow
+// Sacred path: 7×7 badge → candidateApply → 12 council → Bínò seal → claim rewards
+
+// STEP 1: Candidate applies (must have 7×7 badge proving 49 days of work)
+@candidateApply(walletId=1, shrine="0xbino_shrine_address") {
+    // Invoke Ọbàtálá for purity witness
+    @orisaObatala;
+    
+    // Record application on-chain
+    @emit(event="ApplicationSubmitted", wallet=1);
+}
+
+// STEP 2: Council of 12 approve (each member votes)
+// Council member 1
+@councilApprove(walletId=1);
+
+// Council member 2
+@councilApprove(walletId=1);
+
+// ... (10 more council approvals)
+
+// STEP 3: Bínò final sign (after all 12 approve)
+@finalSign(walletId=1) {
+    // Invoke Ṣàngó for justice
+    @orisaSango;
+    
+    // Record final seal
+    @receipt(hash="0x1440111111111111111111111111111111111111111111111111111111111111");
+    
+    // Emit inheritance awarded
+    @emit(event="InheritanceAwarded", wallet=1, winner="0xbino_shrine_address");
+}
+
+// STEP 4: Tithe distribution (25% to 1440 wallets)
+@distributeOffering(amount=10000.0) {
+    // Each wallet receives: 10000 * 0.25 / 1440 = 1.736 Aṣẹ
+    // Locked at 11.11% APY
+    @emit(event="OfferingDistributed", total=2500.0, perWallet=1.736);
+}
+
+// STEP 5: Claim rewards (after time passes, not on Sabbath)
+@claimRewards(walletId=1) {
+    // Unlock 11.11% APY yield
+    // Cannot execute on Saturday (Sabbath fasting)
+    @emit(event="RewardsClaimed", wallet=1);
+    
+    // Transfer rewards to shrine
+    @transfer(to="0xbino_shrine_address", amount=19.25);
+}
+
+// Final blessing
+@orisaObatala

@@ -1,0 +1,165 @@
+// Stream Validator — Safe JSON Schema Enforcement
+// No shell eval, path-safe, prototype pollution guards
+
+@validator(
+    stream: "esu",
+    entries: 85,
+    aspects: ["gateway", "choice", "communication", "transformation", "boundary"],
+    hashAlgo: "sha256"
+) {
+    // 1. SCHEMA VALIDATION
+    @rule validateEntry(entry: Entry, index: uint8) {
+        @require entry.index == index "INDEX_MISMATCH";
+        @require typeof entry.ritual == "string" "RITUAL_TYPE";
+        @require typeof entry.slug == "string" "SLUG_TYPE";
+        @require /^[a-z]+$/.test(entry.slug) "SLUG_FORMAT";
+        @require entry.crossroads_aspect in aspects "INVALID_ASPECT";
+        
+        // Verify slug matches normalized ritual
+        @let normalized = entry.ritual.normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[^a-z]/g, "");
+        @require entry.slug == normalized "SLUG_RITUAL_MISMATCH";
+    }
+    
+    // 2. PATH SAFETY
+    @rule assertASCIIName(path: string) {
+        @require /^[a-z0-9._-]+$/i.test(path) "INVALID_NAME";
+        @require !path.includes("..") "PATH_TRAVERSAL_DOTDOT";
+        @require !path.startsWith("/") "PATH_TRAVERSAL_ABS";
+        @require !path.includes("\\") "PATH_TRAVERSAL_BACKSLASH";
+    }
+    
+    @rule safeResolve(base: string, rel: string) -> string {
+        @call assertASCIIName(rel);
+        @let target = resolve(base, rel);
+        @let relpath = relative(base, target);
+        @require !relpath.startsWith("..") "PATH_ESCAPE_PARENT";
+        @require !isAbsolute(relpath) "PATH_ESCAPE_ABS";
+        @return target;
+    }
+    
+    // 3. SAFE JSON READ (anti-prototype pollution)
+    @rule readJsonSafe<T>(file: string, maxBytes: uint32 = 524288) -> T {
+        @let stat = fs.stat(file);
+        @require stat.isFile() "NOT_A_FILE";
+        @require stat.size <= maxBytes "FILE_TOO_LARGE";
+        
+        @let raw = fs.read(file, "utf8");
+        @require /^[\x09\x0a\x0d\x20-\x7e]*$/.test(raw) "NON_ASCII_JSON";
+        
+        @let obj = JSON.parse(raw);
+        
+        // Prototype pollution guard
+        @if (typeof obj == "object" && obj != null) {
+            @require !("__proto__" in obj) "PROTO_POLLUTION_PROTO";
+            @require !("constructor" in obj) "PROTO_POLLUTION_CONSTRUCTOR";
+        }
+        
+        @return obj as T;
+    }
+    
+    // 4. STREAM VALIDATION
+    @rule validateStream(entries: Entry[]) -> ValidationResult {
+        @require entries.length == 85 "COUNT_85";
+        
+        // Validate indices are continuous 0..84
+        @let indices = entries.map(e => e.index).sort((a,b) => a - b);
+        @require indices[0] == 0 "INDEX_START";
+        @require indices[84] == 84 "INDEX_END";
+        @for i in 0..84 {
+            @require indices[i] == i "INDEX_CONTINUITY";
+        }
+        
+        // Validate each entry
+        @for entry in entries {
+            @call validateEntry(entry, entry.index);
+        }
+        
+        // Check slug uniqueness
+        @let slugs = entries.map(e => e.slug);
+        @require slugs.unique().length == slugs.length "SLUG_DUPLICATE";
+        
+        // Validate aspect distribution (17 each)
+        @let counts = {
+            gateway: 0,
+            choice: 0,
+            communication: 0,
+            transformation: 0,
+            boundary: 0
+        };
+        
+        @for entry in entries {
+            counts[entry.crossroads_aspect]++;
+        }
+        
+        @for aspect in aspects {
+            @require counts[aspect] == 17 "ASPECT_COUNT_MISMATCH";
+        }
+        
+        // Compute Merkle root with domain separation
+        @let merkleRoot = computeMerkleRoot(entries);
+        @let streamDigest = sha256(canonicalJSON({entries}));
+        
+        @return {
+            ok: true,
+            counts: counts,
+            merkleRootHex: merkleRoot.toHex(),
+            streamDigestHex: streamDigest.toHex()
+        };
+    }
+    
+    // 5. MERKLE COMPUTATION (domain-separated, fixed padding)
+    @rule computeMerkleRoot(entries: Entry[]) -> Hash {
+        @const LEAF = bytes([0x00]);
+        @const NODE = bytes([0x01]);
+        @const PAD = bytes([0x50, 0x41, 0x44]); // "PAD"
+        @const PAD_VERSION = 1;
+        
+        // Canonical JSON encoding
+        @let sortRec = (v: any) => {
+            @if Array.isArray(v) @return v.map(sortRec);
+            @if typeof v == "object" && v != null {
+                @let sorted = {};
+                @for key in Object.keys(v).sort() {
+                    sorted[key] = sortRec(v[key]);
+                }
+                @return sorted;
+            }
+            @return v;
+        };
+        
+        @let enc = (obj: any) => JSON.stringify(sortRec(obj)).toBytes();
+        
+        // Build leaf hashes
+        @let leaves = entries.map(e => sha256(LEAF + enc(e)));
+        
+        @let layer = leaves.slice();
+        @let depth = 0;
+        @const total = leaves.length;
+        
+        @while layer.length > 1 {
+            @let next = [];
+            
+            @for i in 0..layer.length step 2 {
+                @let a = layer[i];
+                @let b;
+                
+                @if i + 1 < layer.length {
+                    b = layer[i + 1];
+                } else {
+                    // Fixed deterministic padding
+                    b = sha256(NODE + PAD + u32(total) + u32(depth) + u32(PAD_VERSION));
+                }
+                
+                next.push(sha256(NODE + a + b));
+            }
+            
+            layer = next;
+            depth++;
+        }
+        
+        @return layer[0];
+    }
+}

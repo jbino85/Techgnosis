@@ -1,0 +1,34 @@
+# Julia
+*.ji
+*.o
+*.so
+*.dylib
+*.dll
+Manifest.toml
+
+# Build artifacts
+*.log
+*.aux
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+test_output/
+*.test
+
+# FFI compiled objects
+ffi/**/*.o
+ffi/**/*.so
+ffi/**/*.dylib
+ffi/**/*.dll
+ffi/rust/target/
+ffi/go/*.a
