@@ -1,175 +1,471 @@
-# 🤍🗿⚖️🕊️🌄 VEIL INDEX & LOOKUP
-# Maps all 777 veils to their mathematical/sacred definitions
-# Integrated with Ọ̀ṢỌ́VM opcode dispatch
+"""
+veil_index.jl
+
+Complete catalog lookup, search, and export system for 777 veils.
+Provides fast access by ID, tier, opcode, or keyword search.
+"""
 
 module VeilIndex
 
-using JSON
+include("veils_777.jl")
+using .Veils777
+using JSON3
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LOOKUP FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
 
 """
-Complete 777-veil knowledge base index.
-Each veil maps to: name, tier, formula, purpose, opcode.
+    lookup_veil(veil_id::Int) :: VeilDefinition
+
+Retrieve a veil definition by ID. Returns placeholder if not yet defined.
 """
-
-struct Veil
-    number::Int
-    name::String
-    tier::String
-    formula::String
-    description::String
-    ffi_language::String  # julia, rust, go, move, idris, python
-    related_opcode::Union{Nothing, String}
+function lookup_veil(veil_id::Int)::VeilDefinition
+    if haskey(VEIL_CATALOG, veil_id)
+        return VEIL_CATALOG[veil_id]
+    else
+        return create_placeholder_veil(veil_id)
+    end
 end
 
-const VEIL_CATALOG = Dict{Int, Veil}(
-    # Veils 1-25: PID & Classical Control
-    1 => Veil(1, "PID Controller", "classical", "u = Kp·e + Ki·∫e + Kd·de/dt", 
-        "Three-term feedback control, foundation of all servo systems", "julia", "0x03"),
-    2 => Veil(2, "Kalman Filter", "classical", "x̂_k = x̂_{k-1} + K_k(z_k - H·x̂_{k-1})", 
-        "Optimal linear state estimation under Gaussian noise", "julia", "0x04"),
-    3 => Veil(3, "LQR Control", "classical", "u = -Kx, K = R⁻¹B^T P",
-        "Optimal linear quadratic control; state feedback gain", "rust", "0x05"),
-    4 => Veil(4, "State Space", "classical", "ẋ = Ax + Bu, y = Cx + Du",
-        "Linear time-invariant system representation", "julia", "0x06"),
-    5 => Veil(5, "Transfer Function", "classical", "G(s) = Y(s)/U(s)",
-        "Frequency domain system representation via Laplace transform", "julia", "0x07"),
-    
-    # Veils 26-75: Machine Learning (50 veils)
-    26 => Veil(26, "Gradient Descent", "machine_learning", "θ = θ - α∇J(θ)",
-        "Iterative optimization via loss gradient descent", "python", "0x1a"),
-    27 => Veil(27, "Backpropagation", "machine_learning", "δ^l = ((W^{l+1})^T δ^{l+1}) ⊙ σ'(z^l)",
-        "Chain rule for neural network gradient computation", "julia", "0x1b"),
-    28 => Veil(28, "Adam Optimizer", "machine_learning", "m_t = β₁m_{t-1} + (1-β₁)g_t",
-        "Adaptive learning rate optimization with momentum", "python", "0x1c"),
-    32 => Veil(32, "Softmax", "machine_learning", "σ(z_i) = e^{z_i}/Σe^{z_j}",
-        "Probability distribution over classes", "julia", "0x20"),
-    33 => Veil(33, "ReLU", "machine_learning", "f(x) = max(0, x)",
-        "Rectified linear unit activation function", "julia", "0x21"),
-    40 => Veil(40, "Attention", "machine_learning", "softmax(QK^T/√d_k)V",
-        "Query-key-value weighted aggregation for transformers", "python", "0x28"),
-    41 => Veil(41, "Transformer", "machine_learning", "MultiHead(Q,K,V) = Concat(head₁,...,headₕ)W^O",
-        "Parallel attention-based sequence model", "python", "0x29"),
-    51 => Veil(51, "Gaussian Mixture", "machine_learning", "p(x) = Σ πₖN(x|μₖ, Σₖ)",
-        "Probabilistic clustering with soft assignments", "julia", "0x33"),
-    
-    # Veils 76-100: Signal Processing
-    76 => Veil(76, "Fourier Transform", "signal_processing", "F(ω) = ∫f(t)e^{-jωt}dt",
-        "Time-frequency decomposition via exponential basis", "julia", "0x4c"),
-    77 => Veil(77, "DFT", "signal_processing", "X[k] = Σx[n]e^{-j2πkn/N}",
-        "Discrete Fourier Transform for finite sequences", "julia", "0x4d"),
-    78 => Veil(78, "FFT", "signal_processing", "Cooley-Tukey algorithm, O(N log N)",
-        "Fast Fourier Transform via radix-2 decomposition", "julia", "0x4e"),
-    
-    # Veils 101-125: Robotics & Kinematics
-    101 => Veil(101, "Forward Kinematics", "robotics", "T = A₁A₂...Aₙ",
-        "Compute end-effector pose from joint angles", "rust", "0x65"),
-    102 => Veil(102, "Inverse Kinematics", "robotics", "θ = f⁻¹(x, y, z)",
-        "Compute joint angles for desired end-effector pose", "rust", "0x66"),
-    103 => Veil(103, "Jacobian", "robotics", "J = ∂f/∂θ",
-        "Differential kinematics; maps joint to end-effector velocity", "rust", "0x67"),
-    
-    # Veils 126-150: Computer Vision
-    126 => Veil(126, "Camera Model", "vision", "x = K[R|t]X",
-        "Perspective projection with intrinsics and extrinsics", "python", "0x7e"),
-    134 => Veil(134, "SIFT", "vision", "Scale-invariant feature transform",
-        "Keypoint detection and descriptor for image matching", "python", "0x86"),
-    
-    # Veils 201-225: Physics & Dynamics
-    201 => Veil(201, "Newton's Second Law", "physics", "F = ma",
-        "Fundamental equation of motion", "julia", "0xc9"),
-    216 => Veil(216, "Torque", "physics", "τ = r × F",
-        "Rotational force; causes angular acceleration", "julia", "0xd8"),
-    
-    # Veils 301-325: Cryptography & Blockchain
-    301 => Veil(301, "SHA-256", "crypto_blockchain", "Secure Hash Algorithm 256-bit",
-        "Cryptographic one-way function; blockchain foundation", "rust", "0x12d"),
-    308 => Veil(308, "RSA", "crypto_blockchain", "Asymmetric encryption via factorization",
-        "Public/private key cryptosystem", "rust", "0x134"),
-    309 => Veil(309, "ECDSA", "crypto_blockchain", "Elliptic curve digital signature algorithm",
-        "Efficient public key signatures", "rust", "0x135"),
-    
-    # Veils 401-413: The First Canon (Sacred Cycles & Archetypes)
-    401 => Veil(401, "Ifá Binary Bones", "first_canon", "2, 16, 256, 65536, 2³², 2⁴⁰",
-        "Odù lattice as cosmic binary; Yoruba divination meets computation", "julia", "0x191"),
-    402 => Veil(402, "Cultural Cycles", "first_canon", "Yoruba 7/1440, Kemetic, Kabbalah, Vedic, Mayan, Islamic, Biblical, Norse",
-        "Unified sacred calendrical systems across 8 traditions", "julia", "0x192"),
-    403 => Veil(403, "Mathematical Constants", "first_canon", "φ, π, τ, e, √2, √3, √5, Catalan",
-        "Universal ratios encoding growth, cycles, and structure", "julia", "0x193"),
-    404 => Veil(404, "Temple Earth Codes", "first_canon", "Pyramid ratios, sacred cubit, Vesica, ley numbers",
-        "Sacred geometry in architecture and geomancy", "julia", "0x194"),
-    405 => Veil(405, "Cosmic Cycles", "first_canon", "24h/1440, lunar, Metonic, Saros, precession, ages, Venus",
-        "Astronomical cycles at multiple timescales", "julia", "0x195"),
-    406 => Veil(406, "Chaos & Fractals", "first_canon", "Golden angle, Feigenbaum, Mandelbrot/Julia, Euler-Mascheroni",
-        "Non-linear dynamics and self-similar structure", "julia", "0x196"),
-    407 => Veil(407, "Harmonics & Resonance", "first_canon", "Pythagorean, Schumann, 432/528/864 Hz, chakras, marmas",
-        "Vibrational frequencies across physics and biology", "julia", "0x197"),
-    408 => Veil(408, "Meta-Grids", "first_canon", "Prime fields, E₈ lattice, flower of life, Metatron's Cube",
-        "Higher-dimensional lattice structures", "julia", "0x198"),
-    409 => Veil(409, "Recursive Mirrors", "first_canon", "Gödel encoding, attractors, self-reference loops",
-        "Meta-logical recursion and strange loops", "julia", "0x199"),
-    410 => Veil(410, "Archetypal Forms", "first_canon", "Platonic solids, Archimedean, Kepler-Poinsot, Monster group",
-        "Symmetry groups and idealized shapes", "julia", "0x19a"),
-    411 => Veil(411, "Energetics", "first_canon", "c, h, G, 19.47°, solar/earth harmonics",
-        "Fundamental physical constants and Earth's sacred geometry", "julia", "0x19b"),
-    412 => Veil(412, "Meta-Consciousness", "first_canon", "Binary, monad, wheel-archetypes, numbers as thought-forms",
-        "Philosophical interpretation of consciousness via number", "julia", "0x19c"),
-    413 => Veil(413, "Nameless Source", "first_canon", "0, 1, ∞, i, ℵ, 12:60 vs 13:20, pre-number silence",
-        "Foundational metaphysical void; pre-creation state", "julia", "0x19d"),
-    
-    # Veils 501-520: Quantum Foundations
-    501 => Veil(501, "Qubit Basis", "quantum", "|0⟩, |1⟩ superposition",
-        "Fundamental quantum bit and superposition principle", "julia", "0x1f5"),
-    502 => Veil(502, "Bloch Sphere", "quantum", "θ, φ parameterization on S²",
-        "Single-qubit state visualization on unit sphere", "julia", "0x1f6"),
-    503 => Veil(503, "Hadamard Gate", "quantum", "H = 1/√2 [1 1; 1 -1]",
-        "Superposition creation; equal superposition of |0⟩ and |1⟩", "julia", "0x1f7"),
-    514 => Veil(514, "Shor's Algorithm", "quantum", "Period finding via Fourier transform",
-        "Quantum factorization algorithm; breaks RSA", "julia", "0x202"),
-    515 => Veil(515, "Grover's Algorithm", "quantum", "Amplitude amplification O(√N)",
-        "Quantum search with quadratic speedup", "julia", "0x203"),
-)
+"""
+    search_veils(query::String) :: Vector{VeilDefinition}
 
-function lookup_veil(veil_num::Int)::Union{Veil, Nothing}
-    """Retrieve a veil by its number."""
-    return get(VEIL_CATALOG, veil_num, nothing)
-end
-
-function search_veils(keyword::String)::Vector{Veil}
-    """Search veils by name or description keyword."""
-    results = Veil[]
-    for (num, veil) in VEIL_CATALOG
-        if occursin(lowercase(keyword), lowercase(veil.name)) ||
-           occursin(lowercase(keyword), lowercase(veil.description))
+Search for veils by name, description, tags, or equation.
+Returns all matching veils (case-insensitive).
+"""
+function search_veils(query::String)::Vector{VeilDefinition}
+    query_lower = lowercase(query)
+    results = VeilDefinition[]
+    
+    # Search all veils in catalog
+    for (id, veil) in VEIL_CATALOG
+        # Check multiple fields
+        if (lowercase(veil.name) |> contains(query_lower)) ||
+           (lowercase(veil.description) |> contains(query_lower)) ||
+           (lowercase(veil.category) |> contains(query_lower)) ||
+           (any(lowercase(tag) |> contains(query_lower) for tag in veil.tags))
             push!(results, veil)
         end
     end
+    
+    # Also search placeholders for unmapped IDs if query is numeric
+    if tryparse(Int, query) !== nothing
+        id = parse(Int, query)
+        if 1 <= id <= 777 && !haskey(VEIL_CATALOG, id)
+            push!(results, create_placeholder_veil(id))
+        end
+    end
+    
+    # Sort by ID
+    sort!(results, by=v -> v.id)
     return results
 end
 
-function veil_by_tier(tier::String)::Vector{Veil}
-    """Get all veils in a specific tier."""
-    return [v for (_, v) in VEIL_CATALOG if v.tier == tier]
+"""
+    veil_by_tier(tier::String) :: Vector{VeilDefinition}
+
+Retrieve all veils in a specific tier.
+Returns empty vector if tier not found.
+"""
+function veil_by_tier(tier::String)::Vector{VeilDefinition}
+    # Normalize tier name
+    tier_lower = lowercase(replace(tier, r"[\s_-]" => "_"))
+    
+    if !haskey(VEIL_TIERS, tier_lower)
+        return VeilDefinition[]
+    end
+    
+    start_id, end_id = VEIL_TIERS[tier_lower]
+    results = VeilDefinition[]
+    
+    for id in start_id:end_id
+        push!(results, lookup_veil(id))
+    end
+    
+    return results
 end
 
-function export_veil_json(filename::String)
-    """Export entire catalog to JSON."""
-    catalog_dict = Dict()
-    for (num, veil) in VEIL_CATALOG
-        catalog_dict[string(num)] = Dict(
-            "name" => veil.name,
-            "tier" => veil.tier,
-            "formula" => veil.formula,
-            "description" => veil.description,
-            "ffi" => veil.ffi_language,
-            "opcode" => veil.related_opcode
-        )
+"""
+    veil_by_opcode(opcode::String) :: Union{VeilDefinition, Nothing}
+
+Retrieve a veil by its hex opcode.
+"""
+function veil_by_opcode(opcode::String)::Union{VeilDefinition, Nothing}
+    for (id, veil) in VEIL_CATALOG
+        if uppercase(veil.opcode) == uppercase(opcode)
+            return veil
+        end
     end
-    open(filename, "w") do io
-        write(io, JSON.json(catalog_dict, 2))
-    end
+    return nothing
 end
 
-export Veil, VEIL_CATALOG
-export lookup_veil, search_veils, veil_by_tier, export_veil_json
+"""
+    veil_by_tag(tag::String) :: Vector{VeilDefinition}
+
+Retrieve all veils with a specific tag.
+"""
+function veil_by_tag(tag::String)::Vector{VeilDefinition}
+    tag_lower = lowercase(tag)
+    results = VeilDefinition[]
+    
+    for (id, veil) in VEIL_CATALOG
+        if any(lowercase(t) == tag_lower for t in veil.tags)
+            push!(results, veil)
+        end
+    end
+    
+    return sort!(results, by=v -> v.id)
+end
+
+"""
+    veil_by_ffi_language(language::String) :: Vector{VeilDefinition}
+
+Retrieve all veils implemented in a specific language.
+"""
+function veil_by_ffi_language(language::String)::Vector{VeilDefinition}
+    lang_lower = lowercase(language)
+    results = VeilDefinition[]
+    
+    for (id, veil) in VEIL_CATALOG
+        if lowercase(veil.ffi_language) == lang_lower
+            push!(results, veil)
+        end
+    end
+    
+    return sort!(results, by=v -> v.id)
+end
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGGREGATION FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+"""
+    get_all_tiers() :: Vector{String}
+
+Return list of all veil tier names.
+"""
+function get_all_tiers()::Vector{String}
+    return collect(keys(VEIL_TIERS))
+end
+
+"""
+    get_tier_bounds(tier::String) :: Union{Tuple{Int,Int}, Nothing}
+
+Get the start and end IDs for a tier.
+"""
+function get_tier_bounds(tier::String)::Union{Tuple{Int,Int}, Nothing}
+    tier_lower = lowercase(replace(tier, r"[\s_-]" => "_"))
+    if haskey(VEIL_TIERS, tier_lower)
+        return VEIL_TIERS[tier_lower]
+    end
+    return nothing
+end
+
+"""
+    count_implemented_veils() :: Int
+
+Count how many veils are currently implemented in the catalog.
+"""
+function count_implemented_veils()::Int
+    return length(VEIL_CATALOG)
+end
+
+"""
+    count_total_veils() :: Int
+
+Return total number of veils (777).
+"""
+function count_total_veils()::Int
+    return 777
+end
+
+"""
+    get_completion_percentage() :: Float64
+
+Return percentage of veils currently implemented.
+"""
+function get_completion_percentage()::Float64
+    return (count_implemented_veils() / count_total_veils()) * 100.0
+end
+
+"""
+    get_implementation_by_language() :: Dict{String, Int}
+
+Count veils implemented in each language.
+"""
+function get_implementation_by_language()::Dict{String, Int}
+    counts = Dict{String, Int}()
+    
+    for (id, veil) in VEIL_CATALOG
+        lang = veil.ffi_language
+        counts[lang] = get(counts, lang, 0) + 1
+    end
+    
+    return counts
+end
+
+"""
+    get_implementation_by_tier() :: Dict{String, Int}
+
+Count implemented veils in each tier.
+"""
+function get_implementation_by_tier()::Dict{String, Int}
+    counts = Dict{String, Int}()
+    
+    for (id, veil) in VEIL_CATALOG
+        tier = veil.tier
+        counts[tier] = get(counts, tier, 0) + 1
+    end
+    
+    return counts
+end
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# JSON EXPORT FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+"""
+    veil_to_dict(veil::VeilDefinition) :: Dict
+
+Convert a VeilDefinition to a dictionary for JSON export.
+"""
+function veil_to_dict(veil::VeilDefinition)::Dict
+    return Dict(
+        "id" => veil.id,
+        "name" => veil.name,
+        "tier" => veil.tier,
+        "description" => veil.description,
+        "equation" => veil.equation,
+        "category" => veil.category,
+        "opcode" => veil.opcode,
+        "ffi_language" => veil.ffi_language,
+        "parameters" => [Dict("name" => pair.first, "type" => pair.second) 
+                        for pair in veil.parameters],
+        "outputs" => [Dict("name" => pair.first, "type" => pair.second) 
+                     for pair in veil.outputs],
+        "implementation_file" => veil.implementation_file,
+        "tags" => veil.tags,
+        "references" => veil.references,
+        "sacred_mapping" => veil.sacred_mapping
+    )
+end
+
+"""
+    export_veil_json(filename::String = "veils_777.json") :: String
+
+Export all implemented veils to a JSON file.
+Returns the path to the created file.
+"""
+function export_veil_json(filename::String = "veils_777.json")::String
+    # Collect all veil data
+    veils_data = Dict(
+        "metadata" => Dict(
+            "total_veils" => 777,
+            "implemented_veils" => count_implemented_veils(),
+            "completion_percentage" => get_completion_percentage(),
+            "exported_at" => string(now()),
+            "genesis_time" => SacredGeometry.VEIL_GENESIS_TIME
+        ),
+        "implementation_by_language" => get_implementation_by_language(),
+        "implementation_by_tier" => get_implementation_by_tier(),
+        "tiers" => collect(keys(VEIL_TIERS)),
+        "veils" => [veil_to_dict(veil) for (id, veil) in sort(VEIL_CATALOG)]
+    )
+    
+    # Write JSON file
+    open(filename, "w") do f
+        JSON3.write(f, veils_data)
+    end
+    
+    return abspath(filename)
+end
+
+"""
+    export_veil_markdown(filename::String = "VEILS_CATALOG.md") :: String
+
+Export all implemented veils to a markdown file for documentation.
+"""
+function export_veil_markdown(filename::String = "VEILS_CATALOG.md")::String
+    lines = String[]
+    
+    push!(lines, "# 🤍🗿⚖️🕊️🌄 THE 777 VEILS - COMPLETE CATALOG")
+    push!(lines, "")
+    push!(lines, "**Generated**: $(now())")
+    push!(lines, "**Total Veils**: 777")
+    push!(lines, "**Implemented**: $(count_implemented_veils()) ($(round(get_completion_percentage(), digits=1))%)")
+    push!(lines, "")
+    
+    # Statistics
+    push!(lines, "## STATISTICS")
+    push!(lines, "")
+    push!(lines, "### By Language")
+    push!(lines, "")
+    for (lang, count) in sort(get_implementation_by_language())
+        push!(lines, "- **$lang**: $count veils")
+    end
+    push!(lines, "")
+    
+    push!(lines, "### By Tier")
+    push!(lines, "")
+    for tier in sort(get_all_tiers())
+        count = length(veil_by_tier(tier))
+        if count > 0
+            push!(lines, "- **$tier**: $count veils")
+        end
+    end
+    push!(lines, "")
+    
+    # Organized by tier
+    for tier in sort(get_all_tiers())
+        veils = veil_by_tier(tier)
+        if !isempty(veils)
+            bounds = get_tier_bounds(tier)
+            push!(lines, "## $(uppercase(tier)) (Veils $(bounds[1])–$(bounds[2]))")
+            push!(lines, "")
+            
+            for veil in veils
+                push!(lines, "### Veil #$(veil.id): $(veil.name)")
+                push!(lines, "")
+                push!(lines, "**Description**: $(veil.description)")
+                push!(lines, "")
+                push!(lines, "**Equation**: `$(veil.equation)`")
+                push!(lines, "")
+                push!(lines, "**Opcode**: `$(veil.opcode)`")
+                push!(lines, "")
+                push!(lines, "**FFI Language**: $(veil.ffi_language)")
+                push!(lines, "")
+                
+                if !isempty(veil.parameters)
+                    push!(lines, "**Parameters**:")
+                    for param in veil.parameters
+                        push!(lines, "- `$(param.first)` : $(param.second)")
+                    end
+                    push!(lines, "")
+                end
+                
+                if !isempty(veil.outputs)
+                    push!(lines, "**Outputs**:")
+                    for output in veil.outputs
+                        push!(lines, "- `$(output.first)` : $(output.second)")
+                    end
+                    push!(lines, "")
+                end
+                
+                if !isempty(veil.tags)
+                    push!(lines, "**Tags**: `$(join(veil.tags, "`, `"))`")
+                    push!(lines, "")
+                end
+                
+                if !isempty(veil.sacred_mapping)
+                    push!(lines, "**Sacred Mapping**: $(veil.sacred_mapping)")
+                    push!(lines, "")
+                end
+                
+                push!(lines, "---")
+                push!(lines, "")
+            end
+        end
+    end
+    
+    # Write markdown file
+    open(filename, "w") do f
+        write(f, join(lines, "\n"))
+    end
+    
+    return abspath(filename)
+end
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TESTING & VALIDATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+"""
+    validate_veil_integrity() :: Tuple{Bool, Vector{String}}
+
+Check veil catalog for consistency issues.
+Returns (is_valid, list_of_errors).
+"""
+function validate_veil_integrity()::Tuple{Bool, Vector{String}}
+    errors = String[]
+    
+    # Check for duplicate IDs
+    ids = [v.id for (id, v) in VEIL_CATALOG]
+    if length(ids) != length(unique(ids))
+        push!(errors, "Duplicate veil IDs found")
+    end
+    
+    # Check for IDs outside 1-777 range
+    for (id, veil) in VEIL_CATALOG
+        if veil.id < 1 || veil.id > 777
+            push!(errors, "Veil #$(veil.id) outside valid range [1, 777]")
+        end
+    end
+    
+    # Check for empty required fields
+    for (id, veil) in VEIL_CATALOG
+        if isempty(veil.name)
+            push!(errors, "Veil #$id: missing name")
+        end
+        if isempty(veil.tier)
+            push!(errors, "Veil #$id: missing tier")
+        end
+        if isempty(veil.opcode)
+            push!(errors, "Veil #$id: missing opcode")
+        end
+    end
+    
+    return (isempty(errors), errors)
+end
+
+"""
+    print_summary() :: Nothing
+
+Print a summary of the veil catalog status.
+"""
+function print_summary()::Nothing
+    println("═══════════════════════════════════════════════════════════════════")
+    println("🤍🗿⚖️🕊️🌄 VEIL CATALOG STATUS 🤍🗿⚖️🕊️🌄")
+    println("═══════════════════════════════════════════════════════════════════")
+    println()
+    println("Total Veils: $(count_total_veils())")
+    println("Implemented: $(count_implemented_veils())")
+    println("Completion: $(round(get_completion_percentage(), digits=1))%")
+    println()
+    println("By Language:")
+    for (lang, count) in sort(get_implementation_by_language())
+        println("  $lang: $count")
+    end
+    println()
+    println("By Tier:")
+    for (tier, count) in sort(get_implementation_by_tier())
+        println("  $tier: $count")
+    end
+    println()
+    
+    is_valid, errors = validate_veil_integrity()
+    if is_valid
+        println("✅ Catalog integrity: VALID")
+    else
+        println("❌ Catalog integrity: INVALID")
+        for err in errors
+            println("  - $err")
+        end
+    end
+    println()
+    println("═══════════════════════════════════════════════════════════════════")
+end
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXPORTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+export lookup_veil, search_veils, veil_by_tier, veil_by_opcode, veil_by_tag
+export veil_by_ffi_language
+export get_all_tiers, get_tier_bounds
+export count_implemented_veils, count_total_veils, get_completion_percentage
+export get_implementation_by_language, get_implementation_by_tier
+export veil_to_dict, export_veil_json, export_veil_markdown
+export validate_veil_integrity, print_summary
 
 end # module VeilIndex
