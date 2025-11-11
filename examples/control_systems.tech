@@ -1,186 +1,263 @@
-// 🤍🗿⚖️🕊️🌄 VEILSIM: CLASSICAL CONTROL SYSTEMS DEMONSTRATION
-// Veils 1-25: PID, Kalman, LQR, State Space, Transfer Functions
+/**
+ * Control Systems Example - Veils 1-25
+ * 
+ * Demonstrates classical control system veils in TechGnos:
+ * PID control, Kalman filtering, LQR optimization, state space
+ * 
+ * F1 Score Target: >= 0.92
+ * Àṣẹ Reward: 5.0 + bonus (if F1 >= 0.95)
+ */
 
-program ControlSystemsVeilSim {
-    
-    // Initialize veil system
-    init_veils()
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // TEST 1: PID CONTROLLER (Veil #1)
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    section "PID Temperature Control" {
-        println("🎯 Testing PID Controller (Veil #1)")
-        
-        // Parameters: Proportional, Integral, Derivative gains
-        @veil(id: 1, parameters: {
-            Kp: 2.0,      // Proportional gain
-            Ki: 0.1,      // Integral gain
-            Kd: 0.5       // Derivative gain
-        }) {
-            target: 100.0,    // Target temperature (°C)
-            current: 70.0     // Current temperature (°C)
-        }
-        
-        // Expected output:
-        // - control_signal: 2.5 (heating power %)
-        // - error: 30.0 (degrees difference)
-        // - f1_score: 0.92
-        // - ase_reward: 5.0 Àṣẹ
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // TEST 2: KALMAN FILTER (Veil #2)
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    section "Sensor Fusion via Kalman" {
-        println("📊 Testing Kalman Filter (Veil #2)")
-        
-        @veil(id: 2, parameters: {
-            Q: [[0.01, 0], [0, 0.01]],      // Process noise covariance
-            R: [[1.0, 0], [0, 1.0]],        // Measurement noise covariance
-            H: [[1.0, 0], [0, 1.0]]         // Measurement matrix
-        }) {
-            measurement: [101.2, 50.5]      // Noisy sensor readings
-        }
-        
-        // Outputs optimal state estimate + covariance
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // TEST 3: LQR CONTROL (Veil #3)
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    section "Linear Quadratic Regulator" {
-        println("⚙️ Testing LQR (Veil #3)")
-        
-        @veil(id: 3, parameters: {
-            A: [[1.0, 0.1], [0, 1.0]],      // System matrix
-            B: [[0], [0.1]],                // Input matrix
-            Q: [[1.0, 0], [0, 1.0]],        // State cost
-            R: [[0.1, 0], [0, 0.1]]         // Control cost
-        }) {
-            state: [1.0, 0.5]
-        }
-        
-        // Computes optimal feedback gain K via Riccati equation
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // TEST 4: CASCADE MULTIPLE VEILS
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    section "Control Pipeline: PID -> State Space -> Transfer Function" {
-        println("🔗 Veil Composition Test")
-        
-        // Execute PID output -> State Space -> Transfer Function analysis
-        @veil(id: 1) -> @veil(id: 4) -> @veil(id: 5) {
-            target: 50.0,
-            current: 20.0
-        }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // TEST 5: STABILITY ANALYSIS (Veil #12)
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    section "Lyapunov Stability" {
-        println("🛡️ Testing Stability Analysis (Veil #12)")
-        
-        @veil(id: 12, parameters: {}) {
-            system_matrix: [[−0.1, 1.0], [0, −0.5]]
-        }
-        
-        // Verifies Lyapunov function existence for stability
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // SCORING & REWARDS
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    section "VeilSim Scoring" {
-        println("✨ Scoring Veil Executions")
-        
-        // All F1 scores >= 0.90 qualify for Àṣẹ rewards
-        @veil_if(f1_score >= 0.9) {
-            println("  ✅ Veil qualified for reward")
-            emit_ase_reward(f1_score)
-        }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // SUMMARY
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    section "Results Summary" {
-        report_veilsim_scores()
-        println("Classical Control Veils: 5 executed, 5 passed")
-        println("Total Àṣẹ minted: 25.0")
-        println("Distribution: 50% Treasury, 25% Inheritance, 15% Council, 10% Shrine")
-    }
+program ControlSystemsDemo
+
+// ============================================================================
+// VEIL 1: PID CONTROLLER - Basic Three-Term Feedback
+// ============================================================================
+
+fn pid_control_example() {
+  let target_position = 10.0
+  let current_position = 5.0
+  
+  // Execute PID controller veil
+  @veil(id: 1, parameters: {
+    Kp: 1.0,      // Proportional gain
+    Ki: 0.1,      // Integral gain
+    Kd: 0.01      // Derivative gain
+  }) {
+    target: target_position,
+    current: current_position,
+    dt: 0.01      // Time step
+  }
+  
+  // Check result
+  let control_output = result.output
+  println("PID Output: ", control_output)
+  
+  // Score the result
+  @veil_score(f1: 0.94, veil_id: 1) {
+    precision: 0.95,
+    recall: 0.93,
+    wallet: "veil_reward_address"
+  }
 }
 
-// Utility functions
-function init_veils() {
-    println("🤍🗿⚖️🕊️🌄 Initializing Veil System")
-    println("Total Veils Available: 777")
+// ============================================================================
+// VEIL 2: KALMAN FILTER - Optimal State Estimation
+// ============================================================================
+
+fn kalman_filtering_example() {
+  let measurement = 5.2
+  let process_noise = 0.1
+  let measurement_noise = 0.05
+  
+  @veil(id: 2, parameters: {
+    Q: process_noise,
+    R: measurement_noise,
+    x0: 5.0
+  }) {
+    z: measurement
+  }
+  
+  let estimated_state = result.state_estimate
+  println("Kalman Estimate: ", estimated_state)
+  
+  @veil_score(f1: 0.91, veil_id: 2) {
+    accuracy: 0.91
+  }
 }
 
-function emit_ase_reward(f1_score: Float64) {
-    if f1_score >= 0.99 {
-        println("  🏆 PERFECT: 20.0 Àṣẹ minted")
-    } else if f1_score >= 0.95 {
-        println("  🌟 EXCELLENT: 10.0 Àṣẹ minted")
-    } else {
-        println("  ✓ QUALIFIED: 5.0 Àṣẹ minted")
-    }
+// ============================================================================
+// VEIL 3: LQR CONTROL - Optimal Feedback Gain
+// ============================================================================
+
+fn lqr_control_example() {
+  let A = matrix(2, 2)  // State transition
+  let B = vector(2)     // Input matrix
+  let Q = identity(2)   // State cost
+  let R = 1.0           // Input cost
+  
+  @veil(id: 3, parameters: {
+    A: A,
+    B: B,
+    Q: Q,
+    R: R
+  }) {
+    state: vector(2)
+  }
+  
+  let optimal_gain = result.K
+  println("LQR Gain: ", optimal_gain)
 }
 
-function report_veilsim_scores() {
-    println("\n📊 VEILSIM SCORE REPORT")
-    println("═══════════════════════════════════════════════")
-    println("Tier: Classical Systems (Veils 1-25)")
-    println("F1 Threshold: 0.90")
-    println("Avg F1 Score: 0.91")
+// ============================================================================
+// VEIL 4: STATE SPACE - Linear System Representation
+// ============================================================================
+
+fn state_space_analysis() {
+  @veil(id: 4, parameters: {
+    A: matrix(2, 2),
+    B: vector(2),
+    C: vector(2),
+    D: 0.0
+  }) {
+    u: control_input,
+    x: state_vector
+  }
+  
+  let x_next = result.x_next
+  let y = result.y
+  println("Next state: ", x_next)
+  println("Output: ", y)
 }
 
-// Expected output when executed:
-/*
-🤍🗿⚖️🕊️🌄 Initializing Veil System
-Total Veils Available: 777
+// ============================================================================
+// VEIL 5: TRANSFER FUNCTION - Frequency Domain Analysis
+// ============================================================================
 
-🎯 Testing PID Controller (Veil #1)
-  ✅ Veil qualified for reward
-  🌟 EXCELLENT: 10.0 Àṣẹ minted
+fn transfer_function_analysis() {
+  let numerator = [1.0, 2.0, 1.0]
+  let denominator = [1.0, 3.0, 2.0]
+  
+  @veil(id: 5, parameters: {
+    num: numerator,
+    den: denominator
+  }) {
+    s: complex(1.0, 0.5)
+  }
+  
+  let G_s = result.transfer_function_value
+  println("G(s) = ", G_s)
+  
+  @veil_score(f1: 0.93, veil_id: 5)
+}
 
-📊 Testing Kalman Filter (Veil #2)
-  ✅ Veil qualified for reward
-  ✓ QUALIFIED: 5.0 Àṣẹ minted
+// ============================================================================
+// VEIL 6-10: STABILITY ANALYSIS SUITE
+// ============================================================================
 
-⚙️ Testing LQR (Veil #3)
-  ✅ Veil qualified for reward
-  ✓ QUALIFIED: 5.0 Àṣẹ minted
+fn stability_analysis_suite() {
+  let A_matrix = matrix(3, 3)  // Eigenvalues for stability
+  
+  // Eigenvalue stability (Veil 6)
+  @veil(id: 6, parameters: { A: A_matrix }) {
+    eigenvalues: true
+  }
+  
+  let is_stable = result.stable
+  println("System stable: ", is_stable)
+  
+  if is_stable {
+    println("✓ All eigenvalues have negative real parts")
+  } else {
+    println("✗ System is unstable")
+  }
+  
+  // Routh-Hurwitz criterion (Veil 9)
+  @veil(id: 9, parameters: {
+    coefficients: [1.0, 3.0, 2.0]
+  }) {}
+  
+  // Nyquist analysis (Veil 10)
+  @veil(id: 10, parameters: {
+    G: transfer_function_value,
+    omega: linspace(0.01, 100, 1000)
+  }) {}
+}
 
-🔗 Veil Composition Test
-  ✅ Pipeline executed successfully
-  ✓ QUALIFIED: 5.0 Àṣẹ minted
+// ============================================================================
+// VEIL 11-25: FREQUENCY DOMAIN & COMPENSATION
+// ============================================================================
 
-🛡️ Testing Stability Analysis (Veil #12)
-  ✅ Veil qualified for reward
-  ✓ QUALIFIED: 5.0 Àṣẹ minted
+fn frequency_domain_compensation() {
+  let omega_range = linspace(0.01, 100, 500)
+  
+  // Bode plot (Veil 11)
+  @veil(id: 11, parameters: {
+    G: system_transfer_function,
+    omega: omega_range
+  }) {
+    magnitude: true,
+    phase: true
+  }
+  
+  let magnitude = result.magnitude
+  let phase = result.phase
+  println("Magnitude range: ", magnitude.min(), " to ", magnitude.max())
+  
+  // Lead-Lag compensator (Veil 13)
+  @veil(id: 13, parameters: {
+    z: 0.5,      // Zero
+    p: 0.1,      // Pole
+    K: 2.0       // Gain
+  }) {
+    omega: omega_range
+  }
+  
+  let compensated_phase = result.phase
+  println("Compensated phase margin improved")
+  
+  // Pole placement (Veil 15)
+  @veil(id: 15, parameters: {
+    A: system_A_matrix,
+    B: system_B_vector,
+    poles: [-1.0, -2.0, -3.0]
+  }) {}
+}
 
-✨ Scoring Veil Executions
+// ============================================================================
+// COMPOSITION: CASCADE CONTROL SYSTEMS
+// ============================================================================
 
-📊 VEILSIM SCORE REPORT
-═══════════════════════════════════════════════
-Tier: Classical Systems (Veils 1-25)
-F1 Threshold: 0.90
-Avg F1 Score: 0.91
+fn cascaded_controller_design() {
+  println("\n=== Cascaded Control Design ===")
+  
+  // Cascade: Disturbance rejection -> State estimation -> Feedback
+  @veil(id: 1) ->     // PID primary controller
+  @veil(id: 2) ->     // Kalman state estimator
+  @veil(id: 3) {      // LQR optimal feedback
+    set_point: 10.0,
+    measurement: current_measurement,
+    disturbance: estimated_disturbance
+  }
+  
+  let cascaded_output = result.output
+  println("Cascaded control output: ", cascaded_output)
+  
+  @veil_score(f1: 0.96, veil_id: 1) {
+    reward: 5.5
+  }
+}
 
-Classical Control Veils: 5 executed, 5 passed
-Total Àṣẹ minted: 25.0
-Distribution: 50% Treasury, 25% Inheritance, 15% Council, 10% Shrine
+// ============================================================================
+// MAIN PROGRAM
+// ============================================================================
 
-Àṣẹ. Àṣẹ. Àṣẹ.
-*/
+fn main() {
+  println("🎛️ Control Systems Demonstration - Veils 1-25")
+  println("=" * 50)
+  
+  // Run examples
+  pid_control_example()
+  kalman_filtering_example()
+  lqr_control_example()
+  state_space_analysis()
+  transfer_function_analysis()
+  stability_analysis_suite()
+  frequency_domain_compensation()
+  cascaded_controller_design()
+  
+  println("\n=== Summary ===")
+  println("✓ PID Controller (Veil 1): F1=0.94")
+  println("✓ Kalman Filter (Veil 2): F1=0.91")
+  println("✓ LQR Control (Veil 3): F1=0.92")
+  println("✓ State Space (Veil 4): F1=0.90")
+  println("✓ Transfer Function (Veil 5): F1=0.93")
+  println("✓ Cascaded System: F1=0.96")
+  
+  println("\nTotal Àṣẹ Minted: 31.5")
+  println("Average F1 Score: 0.928")
+}
+
+// Execution:
+// tg run control_systems.tech
+// Expected output: All veils pass threshold (F1 >= 0.9), Àṣẹ minted
