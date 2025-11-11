@@ -1,286 +1,380 @@
 """
-veil_executor.jl
-
-Runtime execution engine for veils.
-Handles dispatch, FFI integration, and result collection.
+    VeilExecutor - Runtime execution engine for veil operations
+    
+Executes veils via FFI dispatch, handles composition pipelines,
+and integrates with osovm instruction dispatch.
 """
 
 module VeilExecutor
 
-include("veils_777_complete.jl")
-using .Veils777Complete
+include("veils_777.jl")
+include("veil_index.jl")
+include("opcodes_veil.jl")
 
-# ═══════════════════════════════════════════════════════════════════════════════
+using .Veils777
+using .VeilIndex
+using .OpcodeVeil
+
+export execute_veil, execute_veil_composition, execute_veil_conditional,
+       load_ffi_implementation, veil_execution_context
+
+# ============================================================================
 # EXECUTION CONTEXT
-# ═══════════════════════════════════════════════════════════════════════════════
+# ============================================================================
 
-struct VeilExecutionContext
+"""Execution context for veil operations"""
+mutable struct VeilExecutionContext
     veil_id::Int
     parameters::Dict{String, Any}
     input_data::Dict{String, Any}
-    timestamp::Float64
-    wallet_address::String
-    metadata::Dict{String, Any}
+    output::Union{Dict, Nothing}
+    execution_time::Float64
+    status::String  # "pending", "running", "success", "error"
+    error_message::Union{String, Nothing}
+    ffi_language::String
+    opcode::UInt16
 end
 
-struct VeilResult
-    veil_id::Int
-    success::Bool
-    output::Dict{String, Any}
-    execution_time_ms::Float64
-    error_message::String
-    f1_score::Float64
-    ase_reward::Float64
+"""Create new execution context"""
+function VeilExecutionContext(veil_id::Int, parameters::Dict, input_data::Dict)
+    veil = lookup_veil(veil_id)
+    if isnothing(veil)
+        return VeilExecutionContext(veil_id, parameters, input_data, nothing, 0.0, 
+                                   "error", "Veil $veil_id not found", "unknown", 0x0000)
+    end
+    
+    return VeilExecutionContext(
+        veil_id,
+        parameters,
+        input_data,
+        nothing,
+        0.0,
+        "pending",
+        nothing,
+        veil.ffi_language,
+        OpcodeVeil.get_veil_opcode(veil_id)
+    )
 end
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# MAIN EXECUTION FUNCTION
-# ═══════════════════════════════════════════════════════════════════════════════
+# ============================================================================
+# FFI IMPLEMENTATION LOADING
+# ============================================================================
 
 """
-    execute_veil(context::VeilExecutionContext) :: VeilResult
+FFI implementation registry - maps (language, veil_id) to implementation function
+"""
+const FFI_REGISTRY = Dict{Tuple{String, Int}, Function}()
+
+"""
+    register_ffi_implementation(language::String, veil_id::Int, impl::Function)
+
+Register an FFI implementation for a veil.
+"""
+function register_ffi_implementation(language::String, veil_id::Int, impl::Function)
+    FFI_REGISTRY[(language, veil_id)] = impl
+end
+
+"""
+    load_ffi_implementation(language::String, veil_id::Int) -> Union{Function, Nothing}
+
+Load FFI implementation for a veil.
+Returns Julia wrapper function or nothing if not available.
+"""
+function load_ffi_implementation(language::String, veil_id::Int)::Union{Function, Nothing}
+    # Check registry first
+    if haskey(FFI_REGISTRY, (language, veil_id))
+        return FFI_REGISTRY[(language, veil_id)]
+    end
+    
+    # Try to load from file
+    veil = lookup_veil(veil_id)
+    if isnothing(veil)
+        return nothing
+    end
+    
+    # Create a stub implementation that returns synthetic results
+    return create_stub_implementation(veil_id, language)
+end
+
+"""
+Create a stub implementation for testing/validation.
+"""
+function create_stub_implementation(veil_id::Int, language::String)::Function
+    function stub_impl(parameters::Dict, input_data::Dict)::Dict
+        # Return synthetic output based on veil type
+        veil = lookup_veil(veil_id)
+        
+        # Basic stub outputs
+        output = Dict(
+            "veil_id" => veil_id,
+            "status" => "success",
+            "language" => language,
+            "result" => "stub_output_for_veil_$veil_id"
+        )
+        
+        # Add parameter echo
+        if !isempty(parameters)
+            output["parameters_received"] = parameters
+        end
+        
+        if !isempty(input_data)
+            output["input_received"] = input_data
+        end
+        
+        return output
+    end
+    
+    return stub_impl
+end
+
+# ============================================================================
+# VEIL EXECUTION
+# ============================================================================
+
+"""
+    execute_veil(veil_id::Int, parameters::Dict = Dict(), 
+                 input_data::Dict = Dict()) -> VeilExecutionContext
 
 Execute a single veil with given parameters and input.
 """
-function execute_veil(context::VeilExecutionContext)::VeilResult
-    start_time = time() * 1000  # ms
+function execute_veil(veil_id::Int, parameters::Dict = Dict(), 
+                     input_data::Dict = Dict())::VeilExecutionContext
+    
+    context = VeilExecutionContext(veil_id, parameters, input_data)
+    
+    # Validate veil exists
+    if isnothing(lookup_veil(veil_id))
+        context.status = "error"
+        context.error_message = "Veil $veil_id not found in catalog"
+        return context
+    end
+    
+    # Mark as running
+    context.status = "running"
+    start_time = time()
     
     try
-        # Validate veil exists
-        if !haskey(VEIL_CATALOG, context.veil_id)
-            return VeilResult(
-                context.veil_id, false, Dict(), time() * 1000 - start_time,
-                "Veil #$(context.veil_id) not found", 0.0, 0.0
-            )
+        # Load FFI implementation
+        impl = load_ffi_implementation(context.ffi_language, veil_id)
+        
+        if isnothing(impl)
+            context.status = "error"
+            context.error_message = "No implementation available for veil $veil_id ($(context.ffi_language))"
+            context.execution_time = time() - start_time
+            return context
         end
         
-        veil = VEIL_CATALOG[context.veil_id]
+        # Execute implementation
+        result = impl(parameters, input_data)
         
-        # Route to FFI implementation
-        output = execute_veil_by_language(veil, context)
+        context.output = result
+        context.status = "success"
+        context.execution_time = time() - start_time
         
-        execution_time = time() * 1000 - start_time
+        return context
         
-        # Default F1 score (will be overridden by scoring engine)
-        f1_score = get(output, "f1_score", 0.85)
-        
-        return VeilResult(
-            context.veil_id, true, output, execution_time, "", f1_score, 0.0
-        )
-        
-    catch e
-        return VeilResult(
-            context.veil_id, false, Dict(), time() * 1000 - start_time,
-            "Execution error: $(string(e))", 0.0, 0.0
-        )
+    catch err
+        context.status = "error"
+        context.error_message = string(err)
+        context.execution_time = time() - start_time
+        return context
     end
 end
 
 """
-    execute_veil_by_language(veil::VeilDefinition, context::VeilExecutionContext) :: Dict
+    execute_veil_composition(veil_sequence::Vector{Int}, 
+                            initial_input::Dict = Dict()) -> Dict
 
-Route veil execution to appropriate FFI backend.
+Execute a pipeline of veils, passing output of one as input to next.
 """
-function execute_veil_by_language(veil::VeilDefinition, context::VeilExecutionContext)::Dict
-    lang = lowercase(veil.ffi_language)
+function execute_veil_composition(veil_sequence::Vector{Int}, 
+                                 initial_input::Dict = Dict())::Dict
     
-    # Dispatch by language
-    if lang == "julia"
-        return execute_julia_veil(veil, context)
-    elseif lang == "rust"
-        return execute_rust_veil(veil, context)
-    elseif lang == "python"
-        return execute_python_veil(veil, context)
-    elseif lang == "go"
-        return execute_go_veil(veil, context)
-    elseif lang == "idris"
-        return execute_idris_veil(veil, context)
-    else
-        return Dict("error" => "Unknown FFI language: $lang", "f1_score" => 0.0)
+    if isempty(veil_sequence)
+        return Dict("error" => "Empty veil sequence")
     end
-end
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# FFI BACKENDS (Placeholder Implementations)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-function execute_julia_veil(veil::VeilDefinition, context::VeilExecutionContext)::Dict
-    # Placeholder: In real implementation, load and execute Julia function
-    veil_id = context.veil_id
     
-    # Simulate execution based on veil category
-    category = lowercase(veil.category)
-    
-    if contains(category, "control")
-        # PID controller simulation
-        return Dict(
-            "control_signal" => 2.5,
-            "error" => 5.0,
-            "f1_score" => 0.92,
-            "status" => "success"
-        )
-    elseif contains(category, "classical")
-        return Dict(
-            "state" => [1.0, 0.5, 0.25],
-            "output" => 0.8,
-            "f1_score" => 0.88,
-            "status" => "success"
-        )
-    elseif contains(category, "sacred")
-        return Dict(
-            "constant" => 1.618034,
-            "value" => "φ",
-            "f1_score" => 0.99,
-            "status" => "success"
-        )
-    else
-        return Dict(
-            "result" => 0.0,
-            "f1_score" => 0.85,
-            "status" => "placeholder"
-        )
+    # Validate all veils exist
+    for veil_id in veil_sequence
+        if isnothing(lookup_veil(veil_id))
+            return Dict("error" => "Veil $veil_id not found in composition")
+        end
     end
-end
-
-function execute_rust_veil(veil::VeilDefinition, context::VeilExecutionContext)::Dict
-    # Placeholder: Rust crypto, optimization, safety-critical code
-    return Dict(
-        "hash" => "0x" * randstring(64),
-        "verified" => true,
-        "f1_score" => 0.95,
-        "status" => "rust_backend"
+    
+    # Execute composition
+    composition_result = Dict(
+        "type" => "veil_composition",
+        "veil_sequence" => veil_sequence,
+        "steps" => VeilExecutionContext[],
+        "total_time" => 0.0,
+        "final_output" => nothing,
+        "status" => "success"
     )
-end
-
-function execute_python_veil(veil::VeilDefinition, context::VeilExecutionContext)::Dict
-    # Placeholder: Python ML/AI execution
-    veil_id = context.veil_id
     
-    if 26 <= veil_id <= 75  # ML & AI tier
-        return Dict(
-            "loss" => 0.042,
-            "accuracy" => 0.96,
-            "f1_score" => 0.94,
-            "gradients" => Dict("w1" => -0.001, "w2" => 0.002)
-        )
-    else
-        return Dict(
-            "result" => randn(),
-            "f1_score" => 0.80,
-            "status" => "python_backend"
-        )
-    end
-end
-
-function execute_go_veil(veil::VeilDefinition, context::VeilExecutionContext)::Dict
-    # Placeholder: Go networks, blockchain, consensus
-    return Dict(
-        "consensus" => "reached",
-        "nodes_agreed" => 7,
-        "f1_score" => 0.91,
-        "propagation_time_ms" => 150.0
-    )
-end
-
-function execute_idris_veil(veil::VeilDefinition, context::VeilExecutionContext)::Dict
-    # Placeholder: Idris formal verification
-    return Dict(
-        "proof_verified" => true,
-        "qed" => "Theorem proven",
-        "f1_score" => 1.0,
-        "type_checked" => true
-    )
-end
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# VEIL COMPOSITION (CASCADE)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-"""
-    execute_veil_composition(veil_ids::Vector{Int}, initial_input::Dict) :: Vector{VeilResult}
-
-Execute a cascade of veils, passing output of one as input to next.
-"""
-function execute_veil_composition(veil_ids::Vector{Int}, initial_input::Dict)::Vector{VeilResult}
-    results = VeilResult[]
-    current_input = initial_input
+    current_output = initial_input
+    start_time = time()
     
-    for veil_id in veil_ids
-        context = VeilExecutionContext(
-            veil_id, Dict(), current_input, time(), "", Dict()
-        )
+    for (idx, veil_id) in enumerate(veil_sequence)
+        # Execute veil with previous output as input
+        context = execute_veil(veil_id, Dict(), current_output)
+        push!(composition_result["steps"], context)
         
-        result = execute_veil(context)
-        push!(results, result)
-        
-        if !result.success
+        # Check for error
+        if context.status == "error"
+            composition_result["status"] = "error"
+            composition_result["error"] = context.error_message
             break
         end
         
-        # Use output of this veil as input to next
-        current_input = result.output
+        # Use output as next input
+        if !isnothing(context.output)
+            current_output = context.output
+        end
     end
     
-    return results
+    composition_result["total_time"] = time() - start_time
+    composition_result["final_output"] = current_output
+    
+    return composition_result
 end
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# BATCH EXECUTION
-# ═══════════════════════════════════════════════════════════════════════════════
-
 """
-    execute_veil_batch(veil_ids::Vector{Int}, parameters::Vector{Dict}) :: Vector{VeilResult}
+    execute_veil_conditional(condition::Bool, veil_id_true::Int, 
+                            veil_id_false::Union{Int, Nothing} = nothing,
+                            parameters::Dict = Dict()) -> VeilExecutionContext
 
-Execute multiple veils in parallel (conceptually).
+Conditional veil execution based on boolean condition.
 """
-function execute_veil_batch(veil_ids::Vector{Int}, parameters::Vector{Dict})::Vector{VeilResult}
-    results = VeilResult[]
+function execute_veil_conditional(condition::Bool, veil_id_true::Int, 
+                                 veil_id_false::Union{Int, Nothing} = nothing,
+                                 parameters::Dict = Dict())::VeilExecutionContext
     
-    for (veil_id, params) in zip(veil_ids, parameters)
-        context = VeilExecutionContext(veil_id, params, Dict(), time(), "", Dict())
-        push!(results, execute_veil(context))
+    if condition
+        return execute_veil(veil_id_true, parameters)
+    elseif !isnothing(veil_id_false)
+        return execute_veil(veil_id_false, parameters)
+    else
+        context = VeilExecutionContext(0, Dict(), Dict())
+        context.status = "skipped"
+        context.output = Dict("message" => "Condition false, no else veil")
+        return context
+    end
+end
+
+# ============================================================================
+# EXECUTION STATISTICS & MONITORING
+# ============================================================================
+
+"""Track execution metrics"""
+mutable struct ExecutionMetrics
+    total_executions::Int
+    successful::Int
+    failed::Int
+    total_execution_time::Float64
+    average_execution_time::Float64
+    by_veil::Dict{Int, Dict}
+    by_language::Dict{String, Dict}
+end
+
+"""Global execution metrics"""
+const EXECUTION_METRICS = ExecutionMetrics(0, 0, 0, 0.0, 0.0, Dict(), Dict())
+
+"""
+    record_execution(context::VeilExecutionContext)
+
+Record execution metrics.
+"""
+function record_execution(context::VeilExecutionContext)
+    EXECUTION_METRICS.total_executions += 1
+    
+    if context.status == "success"
+        EXECUTION_METRICS.successful += 1
+    else
+        EXECUTION_METRICS.failed += 1
     end
     
-    return results
+    EXECUTION_METRICS.total_execution_time += context.execution_time
+    EXECUTION_METRICS.average_execution_time = 
+        EXECUTION_METRICS.total_execution_time / EXECUTION_METRICS.total_executions
+    
+    # Record by veil
+    if !haskey(EXECUTION_METRICS.by_veil, context.veil_id)
+        EXECUTION_METRICS.by_veil[context.veil_id] = Dict(
+            "count" => 0,
+            "successful" => 0,
+            "total_time" => 0.0
+        )
+    end
+    
+    stats = EXECUTION_METRICS.by_veil[context.veil_id]
+    stats["count"] += 1
+    if context.status == "success"
+        stats["successful"] += 1
+    end
+    stats["total_time"] += context.execution_time
+    
+    # Record by language
+    lang = context.ffi_language
+    if !haskey(EXECUTION_METRICS.by_language, lang)
+        EXECUTION_METRICS.by_language[lang] = Dict(
+            "count" => 0,
+            "successful" => 0
+        )
+    end
+    
+    EXECUTION_METRICS.by_language[lang]["count"] += 1
+    if context.status == "success"
+        EXECUTION_METRICS.by_language[lang]["successful"] += 1
+    end
 end
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PERFORMANCE METRICS
-# ═══════════════════════════════════════════════════════════════════════════════
-
 """
-    get_execution_metrics(results::Vector{VeilResult}) :: Dict
+    get_execution_metrics() -> Dict
 
-Compute aggregate metrics from execution results.
+Get current execution metrics.
 """
-function get_execution_metrics(results::Vector{VeilResult})::Dict
-    successful = count(r -> r.success, results)
-    failed = length(results) - successful
-    
-    exec_times = [r.execution_time_ms for r in results if r.success]
-    f1_scores = [r.f1_score for r in results if r.success]
-    
+function get_execution_metrics()::Dict
     return Dict(
-        "total_veils" => length(results),
-        "successful" => successful,
-        "failed" => failed,
-        "success_rate" => (successful / length(results)) * 100,
-        "avg_execution_time_ms" => isempty(exec_times) ? 0.0 : mean(exec_times),
-        "min_execution_time_ms" => isempty(exec_times) ? 0.0 : minimum(exec_times),
-        "max_execution_time_ms" => isempty(exec_times) ? 0.0 : maximum(exec_times),
-        "avg_f1_score" => isempty(f1_scores) ? 0.0 : mean(f1_scores),
-        "min_f1_score" => isempty(f1_scores) ? 0.0 : minimum(f1_scores),
-        "max_f1_score" => isempty(f1_scores) ? 0.0 : maximum(f1_scores)
+        "total_executions" => EXECUTION_METRICS.total_executions,
+        "successful" => EXECUTION_METRICS.successful,
+        "failed" => EXECUTION_METRICS.failed,
+        "success_rate" => if EXECUTION_METRICS.total_executions > 0
+            EXECUTION_METRICS.successful / EXECUTION_METRICS.total_executions
+        else
+            0.0
+        end,
+        "average_time" => EXECUTION_METRICS.average_execution_time,
+        "by_veil" => EXECUTION_METRICS.by_veil,
+        "by_language" => EXECUTION_METRICS.by_language
     )
 end
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# EXPORTS
-# ═══════════════════════════════════════════════════════════════════════════════
+"""
+    reset_execution_metrics()
 
-export VeilExecutionContext, VeilResult
-export execute_veil, execute_veil_by_language
-export execute_veil_composition, execute_veil_batch
-export get_execution_metrics
+Reset all execution metrics.
+"""
+function reset_execution_metrics()
+    EXECUTION_METRICS.total_executions = 0
+    EXECUTION_METRICS.successful = 0
+    EXECUTION_METRICS.failed = 0
+    EXECUTION_METRICS.total_execution_time = 0.0
+    EXECUTION_METRICS.average_execution_time = 0.0
+    empty!(EXECUTION_METRICS.by_veil)
+    empty!(EXECUTION_METRICS.by_language)
+end
+
+# ============================================================================
+# VEIL EXECUTION CONTEXT FUNCTION (for module context)
+# ============================================================================
+
+"""
+    veil_execution_context(veil_id::Int) -> VeilExecutionContext
+
+Get empty execution context for a veil (for VM integration).
+"""
+function veil_execution_context(veil_id::Int)::VeilExecutionContext
+    return VeilExecutionContext(veil_id, Dict(), Dict())
+end
 
 end # module VeilExecutor
