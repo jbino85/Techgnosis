@@ -198,13 +198,36 @@ struct SimulationMetrics
 end
 ```
 
-### **Minting Contract**
+### **Minting Contract (Integrated with ÀṢẸ Tokenomics)**
+
+The VeilSim engine is the execution engine for **Proof-of-Simulation (PoS)** mining in the ÀṢẸ economy:
+
 ```techgnos
-if metrics.f1_score >= 0.9 && context == "BatchContext" {
-    mint 5.0 Àṣẹ to executor_wallet;
-    emit VeilScoringMint(veil_id, f1_score, 5.0, timestamp);
+if metrics.f1_score >= current_difficulty && context == "BatchContext" {
+    reward = 50.0 / (2 ^ current_epoch);  # Bitcoin-style halving
+    mint reward Àṣẹ to executor_wallet;
+    
+    # Ṣàngó Offering split
+    treasury = 0.50 * reward;              # 50% to treasury
+    inheritance = 0.25 * reward;           # 25% to 1440 wallets (11.11% APY)
+    council = 0.15 * reward;               # 15% to council of 12
+    shrine = 0.10 * reward;                # 10% to Ọbàtálá shrine
+    
+    emit VeilMintedWithSplit(
+        veil_id, f1_score, reward, 
+        treasury, inheritance, council, shrine,
+        current_epoch, timestamp
+    );
 }
 ```
+
+**Key Differences from Legacy VeilSim:**
+- **Reward scales** from 50 Àṣẹ (epoch 0) → 25 → 12.5 → ... (halving every 4 years)
+- **Difficulty adjusts** dynamically (F1 ≥ 0.777 at genesis, increases over time)
+- **Integrated with witnessing** (+5 Àṣẹ bonus if simulation matched real-world drone event)
+- **Full tokenomics** (3.69% tithe, 50/25/15/10 split, inheritance wallets)
+
+See **[TOKENOMICS_ASE.md](./TOKENOMICS_ASE.md)** for complete economic design.
 
 ---
 

@@ -37,10 +37,16 @@ Executes 160 sacred opcodes across 6 languages:
 
 ### **3. Àṣẹ Token**
 Universal work currency with:
+- **Dual-mint system**: Proof-of-Simulation (Julia math) + Proof-of-Witness (real-world IoT)
+- **Bitcoin-style halving** every 4 years (50 → 25 → 12.5 → ...)
+- **Difficulty adjustment** every 2016 blocks (F1-score threshold)
+- **Infinite supply** but asymptotically bounded (~210k from sims + ~1M/year from witnessing)
 - **3.69% tithe** on all mints
 - **50/25/15/10 split** (Treasury/Inheritance/Council/Shrine)
 - **11.11% APY** for 1440 inheritance wallets
 - **Sabbath freeze** (no mints on Saturday UTC)
+
+See **[TOKENOMICS_ASE.md](./TOKENOMICS_ASE.md)** for full economic design.
 
 ---
 
