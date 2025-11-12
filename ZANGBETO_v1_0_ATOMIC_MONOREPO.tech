@@ -1,0 +1,1221 @@
+// **🛡️🌀⚛️🕯️🔥**
+// ZÀNGBÉTÒ v1.0 — ATOMIC MONO-REPO (IMMUNE + SHRINE)
+// Fusion of Off-Chain Ritual Immune System & On-Chain Devnet Shrine
+// Techgnos Dialect — Ẹ̀kó Ọ̀rí
+
+@systemArchitecture(
+    name: "Zàngbétò",
+    version: "1.0",
+    realm: "Immune ↔ Shrine (Bi-Directional)",
+    cadence: "daily | weekly | chaos",
+    substrate: "Sui Devnet + Arweave + Bitcoin SPV",
+    guardians: "Elder Multi-Sig (3+ witnesses)",
+    covenant: "Atomic receipt ledger, immutable attestations, weekly sabbath seal"
+) {
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // I. IMMUNE SYSTEM — Off-Chain Veil Masks (Python Ritual)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @submodule("immune/masks", kind: "ritual", security: "sandbox + seccomp") {
+        
+        @veil(id: 1, name: "Ìfá Bones", category: "structural") {
+            // Divination bones → detect malformed state transitions
+            source: "immune/masks/veil1_ifa_bones.py";
+            runtime: "python3 + sandbox/run_with_limits.py";
+            limits: {
+                cpu: "2000 ms wall",
+                memory: "512 MB resident",
+                syscalls: "seccomp profile (read/write/mmap allowed; no fork/exec)"
+            };
+            output: "immune/receipts/out/veil1_*.json (Receipt v2.1 schema)";
+            cadence: ["daily", "on-demand"];
+        }
+        
+        @veil(id: 4, name: "Temple Codes", category: "invariant") {
+            // Integer arithmetic ratios → ppm_within checks
+            source: "immune/masks/veil4_temple_codes.py";
+            runtime: "python3 + sandbox/run_with_limits.py";
+            limits: {
+                cpu: "3000 ms wall",
+                memory: "256 MB resident"
+            };
+            checks: ["integer_rational (no floats)", "ppm_within(threshold: 50)"];
+            output: "immune/receipts/out/veil4_*.json (Receipt v2.1 schema)";
+            cadence: ["daily"];
+        }
+        
+        @veil(id: 6, name: "Chaos Fractals", category: "fuzz") {
+            // Pseudo-random path exploration → discover edge cases
+            source: "immune/masks/veil6_chaos_fractals.py";
+            runtime: "python3 + sandbox/run_with_limits.py";
+            limits: {
+                cpu: "5000 ms wall",
+                memory: "1024 MB resident"
+            };
+            fuzz: {
+                seed: "VRF proof (cadence/vrf_scheduler.js)",
+                iterations: "1000..5000 per run",
+                strategy: "adaptive jitter on failed paths"
+            };
+            output: "immune/receipts/out/veil6_*.json (Receipt v2.1 schema)";
+            cadence: ["weekly", "chaos (random trigger)"];
+        }
+    }
+    
+    @submodule("immune/cadence", kind: "orchestration", role: "scheduler") {
+        
+        @vrf_scheduler("immune/cadence/vrf_scheduler.js") {
+            purpose: "VRF-seeded jitter scheduling for Veil 6 (Chaos Fractals)";
+            input: "external VRF proof (replace with your chain's proof source)";
+            output: "next_chaos_trigger_ts (UNIX seconds)";
+            note: "ROADMAP: feed from on-chain Shrine VRF events";
+        }
+        
+        @sabbath_witness("immune/cadence/sabbath_witness.js") {
+            purpose: "Witness multi-sig coordination for weekly Sabbath seal";
+            features: [
+                "collect patrol receipts + listener logs",
+                "deduplicate by mask & severity",
+                "prepare Elder attestation batch",
+                "rotate keys if cycle count reached"
+            ];
+        }
+    }
+    
+    @submodule("immune/sandbox", kind: "isolation", security: "cpu/mem/wall enforcement") {
+        
+        @run_with_limits("immune/sandbox/run_with_limits.py") {
+            enforces: ["CPU wall time", "memory resident cap", "syscall whitelist"];
+            technology: ["Python resource module", "seccomp (Linux)", "AppArmor (optional)"];
+            per_veil_config: "immune/sandbox/containment_manifest.json";
+            seccomp_rules: "immune/sandbox/seccomp_profile.json";
+            
+            audit: {
+                rule: "Veils always patrol (attackers throttle, not guardians)",
+                enforcement: "Budget per veil; global credit pool (roadmap)"
+            };
+        }
+    }
+    
+    @submodule("immune/receipts", kind: "output", security: "BLAKE3 hash validation") {
+        
+        @logger("immune/receipts/logger.py") {
+            purpose: "JSON receipt emission (Receipt v2.1 schema)";
+            signature: "no stubs in CI; all receipts must carry 3+ Elder signatures";
+            hash_algorithm: "BLAKE3 (mandatory; ZB_ALLOW_NO_BLAKE3=0)";
+            fields: [
+                "mask (veil name)",
+                "beat (UNIX second)",
+                "patrol_counter (monotonic)",
+                "beacon (SPV-verified Bitcoin anchor)",
+                "attack_class",
+                "severity (LOW|MEDIUM|HIGH|CRITICAL)",
+                "result (contained|exploited|degraded)",
+                "run_commit (blake3:hexdigest)",
+                "run_manifest (reproducible build metadata)",
+                "witness_sigs (3+ signatures)",
+                "anchor_plan (Arweave + OTS staging)"
+            ];
+            storage: "immune/receipts/out/*.json";
+        }
+    }
+    
+    @submodule("immune/utils", kind: "library", dependency: "shared/config") {
+        
+        @utilities("immune/utils.py") {
+            provides: [
+                "BLAKE3 hashing (prod-required)",
+                "secure .zb_state (chmod 0700)",
+                "SPV beacon validation (shared/config/beacon.json)",
+                "integer_rational(val, threshold_ppm) checks",
+                "patrol_counter increment + persistence",
+                "receipt masking (strip sensitive fields pre-archive)"
+            ];
+            imports: [
+                "shared/config/authorized_elders.json",
+                "shared/config/beacon.json",
+                "shared/schemas/receipt.v2.1.json"
+            ];
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // II. SHRINE SYSTEM — On-Chain Receipt Ledger (Sui Move)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @submodule("shrine/sources", kind: "smart_contracts", language: "Sui Move", network: "devnet") {
+        
+        @module("zbt_errors.move", role: "error catalog") {
+            exports: [
+                "E_NOT_WITNESS (9101): Signer not in witness set",
+                "E_NOT_ADMIN (9102): Approval invalid or signer unauthorized",
+                "E_RATE_LIMIT (9103): >10 receipts per witness per 600s",
+                "E_HASH_MISMATCH (9104): Evidence hash does not match stored",
+                "E_SIG_INVALID (9105): Multi-sig verification failed",
+                "E_PENDING_EXPIRED (9106): >600s since receipt creation",
+                "E_PENDING_STATUS (9107): Receipt not in PendingRateCheck state",
+                "E_NONCE_REUSED (9108): Admin nonce counter not incremented",
+                "E_PUBKEY_INVALID (9109): Admin pubkey ≠ 32 bytes",
+                "E_EVIDENCE_HASH_INVALID (9110): Evidence hash ≠ 32 bytes"
+            ];
+        }
+        
+        @module("zbt_core.move", role: "ledger + registry + witnesses") {
+            
+            @object("WitnessSet") {
+                fields: [
+                    "id: UID",
+                    "admins: VecSet<address>",
+                    "admin_pubkeys: Table<address, vector<u8>>",  // 32-byte Ed25519 keys
+                    "witnesses: VecSet<address>",
+                    "threshold: u64"  // minimum admin approvals
+                ];
+            }
+            
+            @object("ReceiptLedger") {
+                fields: [
+                    "id: UID",
+                    "receipts: Table<u64, ReceiptMeta>",
+                    "next_receipt_id: u64"
+                ];
+            }
+            
+            @object("ReceiptMeta") {
+                fields: [
+                    "id: u64",
+                    "witness: address",
+                    "evidence_hash: vector<u8>",  // 32 bytes SHA-256
+                    "tag: vector<u8>",             // e.g., "CAT-1", "FIN-3"
+                    "rule: vector<u8>",            // invariant name
+                    "severity: u8",                // 0=LOW, 1=MED, 2=HIGH, 3=CRIT
+                    "status: u8",                  // 0=New, 1=Verified, 2=Disputed, 3=Fixed, 4=AcceptedRisk, 5=PendingRateCheck
+                    "arweave_tx: vector<u8>",      // permanent archive link
+                    "btc_ots: vector<u8>",         // OpenTimestamps proof
+                    "created_ts: u64",             // milliseconds since epoch
+                    "attested_ts: u64",            // when witness confirmed
+                    "attested_by: address"         // witness signer
+                ];
+            }
+            
+            @object("WitnessRegistry") {
+                fields: [
+                    "id: UID",
+                    "witness_stats: Table<address, WitnessStats>"
+                ];
+            }
+            
+            @object("WitnessStats") {
+                fields: [
+                    "address: address",
+                    "count_window: u64",           // receipts in current 600s window
+                    "window_start_ts: u64",        // when current window began
+                    "total_receipts: u64"          // lifetime count
+                ];
+            }
+            
+            @object("AdminNonces") {
+                fields: [
+                    "id: UID",
+                    "nonces: Table<address, u64>"  // replay-prevention counters
+                ];
+            }
+            
+            @function("submit_receipt", access: "witness", rate_limit: true) {
+                signature: """
+                    pub fun submit_receipt(
+                        ws: &WitnessSet,
+                        rl: &mut ReceiptLedger,
+                        reg: &mut WitnessRegistry,
+                        stats_id: ID,
+                        clock_ref: &Clock,
+                        witness: &signer,
+                        evidence_hash: vector<u8>,
+                        tag: vector<u8>,
+                        rule: vector<u8>,
+                        severity: u8,
+                        arweave_tx: vector<u8>,
+                        btc_ots: vector<u8>
+                    ): u64
+                """;
+                
+                checks: [
+                    "Signer in WitnessSet.witnesses",
+                    "evidence_hash.len() == 32",
+                    "Rate limit: max 10 receipts per 600s",
+                    "Clock-based time window (Sui Clock module)"
+                ];
+                
+                effects: [
+                    "Creates ReceiptMeta with status = 0 (New) or 5 (PendingRateCheck)",
+                    "Increments ReceiptLedger.next_receipt_id",
+                    "Updates WitnessStats.count_window",
+                    "Emits ReceiptSubmitted event"
+                ];
+                
+                returns: "receipt_id (u64)";
+            }
+            
+            @function("attest_verified", access: "witness", immutable: true) {
+                signature: """
+                    pub fun attest_verified(
+                        ws: &WitnessSet,
+                        rl: &mut ReceiptLedger,
+                        witness: &signer,
+                        id: u64,
+                        provided_hash: vector<u8>
+                    )
+                """;
+                
+                checks: [
+                    "Signer in WitnessSet.witnesses",
+                    "provided_hash matches stored evidence_hash",
+                    "Receipt status is New (0)"
+                ];
+                
+                effects: [
+                    "Updates ReceiptMeta.status → 1 (Verified)",
+                    "Records attested_ts and attested_by",
+                    "Emits ReceiptAttested event"
+                ];
+            }
+            
+            @function("mark_disputed", access: "witness", immutable: true) {
+                signature: """
+                    pub fun mark_disputed(
+                        ws: &WitnessSet,
+                        rl: &mut ReceiptLedger,
+                        witness: &signer,
+                        id: u64
+                    )
+                """;
+                
+                effects: [
+                    "Updates ReceiptMeta.status → 2 (Disputed)",
+                    "Emits ReceiptDisputed event"
+                ];
+            }
+            
+            @function("mark_fixed", access: "witness", immutable: true) {
+                effects: [
+                    "Updates ReceiptMeta.status → 3 (Fixed)",
+                    "Emits ReceiptFixed event"
+                ];
+            }
+            
+            @function("accept_risk", access: "witness", immutable: true) {
+                effects: [
+                    "Updates ReceiptMeta.status → 4 (AcceptedRisk)",
+                    "Emits RiskAccepted event"
+                ];
+            }
+            
+            @function("confirm_pending", access: "witness", time_bounded: true) {
+                signature: """
+                    pub fun confirm_pending(
+                        ws: &WitnessSet,
+                        rl: &mut ReceiptLedger,
+                        witness: &signer,
+                        id: u64,
+                        provided_hash: vector<u8>,
+                        clock_ref: &Clock
+                    )
+                """;
+                
+                checks: [
+                    "Receipt status is PendingRateCheck (5)",
+                    "clock_ref.timestamp_ms() - created_ts < 600_000 ms (10 min window)",
+                    "provided_hash matches evidence_hash"
+                ];
+                
+                effects: [
+                    "Updates ReceiptMeta.status → 1 (Verified)",
+                    "Emits PendingConfirmed event"
+                ];
+            }
+            
+            @function("add_witness", access: "admin_multisig", replay_protected: true) {
+                signature: """
+                    pub fun add_witness(
+                        ws: &mut WitnessSet,
+                        approving_addrs: vector<address>,
+                        approving_sigs: vector<vector<u8>>,
+                        nonces: &mut AdminNonces,
+                        new_witness: address
+                    )
+                """;
+                
+                checks: [
+                    "All approving_addrs in ws.admins",
+                    "approving_addrs.len() >= ws.threshold",
+                    "Each signature verifies against admin_pubkey (Ed25519)",
+                    "All nonces are sequential (replay-prevention)"
+                ];
+                
+                effects: [
+                    "Adds new_witness to ws.witnesses",
+                    "Increments nonce for each admin",
+                    "Emits WitnessAdded event"
+                ];
+            }
+            
+            @function("remove_witness", access: "admin_multisig", replay_protected: true) {
+                effects: [
+                    "Removes witness from ws.witnesses",
+                    "Emits WitnessRemoved event"
+                ];
+            }
+            
+            @function("register_admin_pubkey", access: "admin") {
+                signature: """
+                    pub fun register_admin_pubkey(
+                        ws: &mut WitnessSet,
+                        admin: &signer,
+                        pubkey: vector<u8>
+                    )
+                """;
+                
+                checks: ["pubkey.len() == 32"];
+                
+                effects: [
+                    "Stores pubkey in ws.admin_pubkeys[admin_addr]",
+                    "Emits AdminPubkeyRegistered event"
+                ];
+            }
+        }
+        
+        @module("zbt_guard.move", role: "invariant events") {
+            
+            @event("ReceiptSubmitted") {
+                fields: [
+                    "id: u64",
+                    "witness: address",
+                    "tag: vector<u8>",
+                    "severity: u8",
+                    "created_ts: u64"
+                ];
+            }
+            
+            @event("ReceiptAttested") {
+                fields: [
+                    "id: u64",
+                    "witness: address",
+                    "status: u8",
+                    "attested_ts: u64"
+                ];
+            }
+            
+            @event("ReceiptDisputed") {
+                fields: ["id: u64", "witness: address"];
+            }
+            
+            @event("ReceiptFixed") {
+                fields: ["id: u64", "witness: address"];
+            }
+            
+            @event("RiskAccepted") {
+                fields: ["id: u64", "witness: address"];
+            }
+            
+            @event("WitnessAdded") {
+                fields: ["witness: address"];
+            }
+            
+            @event("WitnessRemoved") {
+                fields: ["witness: address"];
+            }
+            
+            @function("emit_state_invariant_guard") {
+                purpose: "On-chain guard: if receipt status changes, emit event for off-chain listener";
+                trigger: "ReceiptAttested → listener records in logs/receipts.ndjson";
+            }
+        }
+        
+        @module("examples/payments.move", role: "demo contract") {
+            purpose: "Toy payment system with intentional bug (underflow risk)";
+            veil_target: "Veil 1 (Ìfá Bones) detects malformed settle_payment()";
+        }
+    }
+    
+    @submodule("shrine/scripts", kind: "orchestration", language: "bash + node") {
+        
+        @script("bootstrap.sh", role: "initialization") {
+            steps: [
+                "Publish zbt_core.move + zbt_guard.move + zbt_errors.move to Sui devnet",
+                "Initialize WitnessSet, ReceiptLedger, WitnessRegistry, AdminNonces shared objects",
+                "Output PKG_ID, LEDGER_ID, WSET_ID, REG_ID, STATS_ID",
+                "Store IDs in .env (for subsequent scripts)"
+            ];
+            
+            output: """
+                Package ID = 0x1234...
+                LEDGER_ID = 0xabcd...
+                WSET_ID = 0xefgh...
+                REG_ID = 0xijkl...
+                STATS_ID = 0xmnop...
+            """;
+        }
+        
+        @script("submit_onchain_receipt.js", role: "submission") {
+            inputs: [
+                "$1: PKG_ID (Move package)",
+                "$2: WSET_ID (witness set object)",
+                "$3: LEDGER_ID (receipt ledger object)",
+                "$4: REG_ID (witness registry object)",
+                "$5: STATS_ID (stats object)",
+                "$6: receipt.json (anchored + OTS-proofed)"
+            ];
+            
+            process: [
+                "Parse receipt.json",
+                "Call zbt::core::submit_receipt() on Sui devnet",
+                "Return receipt_id on-chain",
+                "Capture ReceiptSubmitted event"
+            ];
+        }
+        
+        @script("arweave_anchor.js", role: "permanent storage") {
+            inputs: ["receipt.json or any file"];
+            
+            process: [
+                "Read file contents",
+                "POST to Arweave (AR token payment required)",
+                "Receive arweave_tx ID",
+                "Append arweave_tx to input JSON",
+                "Write modified JSON to stdout"
+            ];
+            
+            idempotency: "If arweave_tx already present, skip POST";
+        }
+        
+        @script("ots.sh", role: "bitcoin SPV proof") {
+            inputs: ["$1: arweave_tx (Arweave transaction ID)"];
+            
+            process: [
+                "Send hash(arweave_tx) to OpenTimestamps API",
+                "Receive Bitcoin SPV proof (chain of merkle proofs)",
+                "Return btc_ots hex string",
+                "Append btc_ots to receipt.json"
+            ];
+        }
+        
+        @script("listen_receipts.js", role: "event listener") {
+            purpose: "Background daemon; polls Sui devnet for ReceiptSubmitted + attestation events";
+            
+            polling: {
+                interval: "5 seconds",
+                filter: "zbt::core::ReceiptSubmitted, zbt::core::ReceiptAttested",
+                cursor_file: "ops/cursors/lastEventCursor.json"
+            };
+            
+            output: "logs/receipts.ndjson (newline-delimited JSON)";
+            
+            each_event: [
+                "Extract receipt ID, witness, tag, severity, timestamp",
+                "Write one JSON object per line (NDJSON format)",
+                "Update cursor for next poll"
+            ];
+            
+            lifetime: "Runs forever (systemd service or supervised process)";
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // III. SHARED ASSETS — Schemas, Config, Utilities
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @submodule("shared/schemas", kind: "specification", format: "JSON-Schema") {
+        
+        @schema("receipt.v2.1.json", role: "canonical receipt definition") {
+            
+            $id: "zangbeto.receipt.v2.1";
+            
+            required_fields: [
+                "mask (string, 3-64 chars)",
+                "beat (integer, 0..i64::MAX)",
+                "beacon (object with btc_hash, block_height)",
+                "patrol_counter (integer, monotonic)",
+                "attack_class (string)",
+                "severity (enum: LOW|MEDIUM|HIGH|CRITICAL)",
+                "result (enum: contained|exploited|degraded)",
+                "run_commit (string, regex: ^blake3:[0-9a-f]{64}$)",
+                "run_manifest (object, minProperties: 1)",
+                "witness_sigs (array, minItems: 3)",
+                "anchor_plan (object)"
+            ];
+            
+            validation: [
+                "No floats anywhere (integer ratios only)",
+                "BLAKE3 hash mandatory (no null)",
+                "SPV-verified beacon required",
+                "3+ witness signatures required"
+            ];
+            
+            usage: "All receipts (immune/receipts/out/*.json) must validate against this schema";
+        }
+    }
+    
+    @submodule("shared/config", kind: "authority registry", format: "JSON") {
+        
+        @config("authorized_elders.json", role: "multi-sig guardians") {
+            structure: {
+                admins: ["0xADMIN1", "0xADMIN2", "0xADMIN3"],
+                threshold: 2,  // 2-of-3 multi-sig required
+                pubkeys: {
+                    "0xADMIN1": "deadbeef...32bytes",
+                    "0xADMIN2": "cafebabe...32bytes",
+                    "0xADMIN3": "facadead...32bytes"
+                }
+            };
+            usage: "Shrine contracts verify admins against this registry";
+        }
+        
+        @config("beacon.json", role: "SPV-verified bitcoin anchor") {
+            structure: {
+                btc_hash: "00000000000000000001234567890abc...",
+                block_height: 842000,
+                timestamp: "2025-01-10T13:00:00Z",
+                merkle_root: "abcdef1234567890...",
+                spv_proof: "...(merkle chain)"
+            };
+            
+            requirement: "Mandatory in CI (ZB_ALLOW_STUBS=0)";
+            source: "Updated via immune/utils.py SPV validator";
+        }
+        
+        @config("sacred_constants.json", role: "system parameters") {
+            fields: [
+                "PATROL_INTERVAL_SEC: 86400 (daily)",
+                "SABBATH_INTERVAL_SEC: 604800 (weekly)",
+                "CHAOS_FREQUENCY_PCT: 15 (Veil 6 trigger probability)",
+                "RATE_LIMIT_WINDOW_MS: 600000 (10 minutes)",
+                "RATE_LIMIT_MAX_RECEIPTS: 10",
+                "VEIL_CPU_LIMIT_MS: {veil1: 2000, veil4: 3000, veil6: 5000}",
+                "VEIL_MEM_LIMIT_MB: {veil1: 512, veil4: 256, veil6: 1024}"
+            ];
+        }
+        
+        @config("veil_access.json", role: "mask authorization") {
+            format: "Access control list for each veil";
+        }
+        
+        @config("security_bounds.json", role: "policy enforcement") {
+            policies: [
+                "max_concurrent_veils: 3",
+                "min_witness_sigs: 3",
+                "receipt_ttl_days: 7 (for pending status)",
+                "admin_nonce_max: u64::MAX"
+            ];
+        }
+        
+        @config("patrol_schedule.json", role: "cadence definition") {
+            schedule: {
+                veil1: "daily 02:00 UTC",
+                veil4: "daily 14:00 UTC",
+                veil6: "weekly Friday 20:00 UTC + chaos events",
+                sabbath: "weekly Friday 23:00 UTC"
+            };
+        }
+    }
+    
+    @submodule("shared/utils", kind: "validation + logging", language: "javascript + python") {
+        
+        @utility("validate_receipt.js", role: "schema validator") {
+            
+            purpose: "Validate receipts against shared/schemas/receipt.v2.1.json";
+            
+            usage: """
+                node shared/utils/validate_receipt.js immune/receipts/out/*.json
+            """;
+            
+            checks: [
+                "Load schema from shared/schemas/receipt.v2.1.json",
+                "For each input JSON file:",
+                "  - Parse and validate against schema",
+                "  - Report errors if invalid",
+                "  - Print ✅ or ❌ to stdout"
+            ];
+            
+            exit_code: {
+                0: "All receipts valid",
+                1: "At least one receipt invalid"
+            };
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // IV. ORCHESTRATION — Top-Level Makefile
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @orchestration("Makefile", role: "workflow conductor") {
+        
+        variables: {
+            IMMUNE: "immune",
+            SHRINE: "shrine",
+            SHARED: "shared",
+            REC_OUT: "immune/receipts/out"
+        };
+        
+        @target("deps", description: "Install dependencies") {
+            steps: [
+                "pip install -r requirements.txt (Python deps)",
+                "cd shrine && npm i (Node deps + Move SDK)"
+            ];
+        }
+        
+        @target("patrol", description: "Run all veils under sandbox limits") {
+            steps: [
+                "python3 immune/sandbox/run_with_limits.py python3 immune/masks/veil1_ifa_bones.py",
+                "python3 immune/sandbox/run_with_limits.py python3 immune/masks/veil4_temple_codes.py",
+                "python3 immune/sandbox/run_with_limits.py python3 immune/masks/veil6_chaos_fractals.py",
+                "echo 'Receipts → immune/receipts/out'",
+                "ls -1 immune/receipts/out/*.json"
+            ];
+            
+            guardian_rule: "Veils always patrol (attackers throttle, not guardians)";
+        }
+        
+        @target("anchor", description: "Anchor recent receipts to Arweave + OTS") {
+            steps: [
+                "for r in immune/receipts/out/*.json:",
+                "  - node shrine/scripts/arweave_anchor.js $r",
+                "  - Extract arweave_tx from output",
+                "  - bash shrine/scripts/ots.sh $arweave_tx",
+                "  - Update receipt.json with btc_ots"
+            ];
+            
+            output: "Receipts now have arweave_tx + btc_ots fields";
+        }
+        
+        @target("submit", description: "Submit anchored receipts on-chain") {
+            steps: [
+                "Find most recent receipt (ls -t immune/receipts/out/*.json | head -n1)",
+                "Call shrine/scripts/submit_onchain_receipt.js $PKG_ID $WSET_ID $LEDGER_ID $REG_ID $STATS_ID receipt.json",
+                "Capture receipt_id from on-chain response"
+            ];
+            
+            validation: [
+                "node shared/utils/validate_receipt.js immune/receipts/out/*.json (pre-submit check)"
+            ];
+        }
+        
+        @target("shrine-bootstrap", description: "Bootstrap on-chain Shrine (Sui devnet)") {
+            steps: [
+                "cd shrine && ./scripts/bootstrap.sh",
+                "Capture PKG_ID, LEDGER_ID, WSET_ID, REG_ID, STATS_ID",
+                "Update .env with these IDs"
+            ];
+            
+            prerequisite: ".env must be populated with SUI_RPC_URL, SUI_ACTIVE_ADDRESS";
+        }
+        
+        @target("sabbath", description: "Weekly Sabbath seal ceremony") {
+            steps: [
+                "Run ops/sabbath_checklist.md manually (guided checklist)",
+                "node shrine/scripts/listen_receipts.js & (background listener)",
+                "Collect patrol receipts + listener logs",
+                "Elder quorum: attest / dispute / accept risk",
+                "Patch, reference commit in weekly note",
+                "Anchor weekly summary to Arweave",
+                "Rotate keys if needed",
+                "Publish Sabbath Seal"
+            ];
+            
+            frequency: "weekly Friday 23:00 UTC";
+        }
+        
+        @target("clean", description: "Remove generated receipts") {
+            steps: [
+                "rm -rf immune/receipts/out/*.json"
+            ];
+        }
+        
+        @phony: ["deps", "patrol", "anchor", "submit", "shrine-bootstrap", "sabbath", "clean"];
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // V. CI/CD — GitHub Actions Workflow
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @workflow(".github/workflows/patrol.yml", trigger: "schedule + manual dispatch") {
+        
+        name: "Night Patrol";
+        
+        @trigger("schedule") {
+            cron: "*/30 * * * *";  // Every 30 minutes
+            purpose: "Continuous veil patrol (daily + chaos)";
+        }
+        
+        @trigger("manual") {
+            type: "workflow_dispatch";
+            purpose: "On-demand Sabbath seal or emergency patrol";
+        }
+        
+        @job("patrol") {
+            runs_on: "ubuntu-latest";
+            
+            steps: [
+                { uses: "actions/checkout@v4" },
+                { uses: "actions/setup-python@v5", with: { "python-version": "3.11" } },
+                { uses: "actions/setup-node@v4", with: { "node-version": "20" } },
+                { run: "make deps" },
+                { run: "make patrol" },
+                { run: "node shared/utils/validate_receipt.js immune/receipts/out/*.json" },
+                { run: "make anchor" },
+                {
+                    if: "${{ github.event_name == 'workflow_dispatch' }}",
+                    run: "make submit"
+                }
+            ];
+            
+            guardrails: [
+                "NO STUBS: All receipts must carry 3+ signatures",
+                "BLAKE3 required (ZB_ALLOW_NO_BLAKE3=0)",
+                "Beacon must be SPV-verified (ZB_ALLOW_STUBS=0)",
+                "Schema validation mandatory before anchor"
+            ];
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // VI. OPS — Sabbath Ritual + Configuration
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @submodule("ops", kind: "ceremony guide", format: "markdown checklist") {
+        
+        @ritual("sabbath_checklist.md", frequency: "weekly") {
+            
+            step1: {
+                title: "Collect patrol receipts + listener logs",
+                command: "cat logs/receipts.ndjson | jq '.id'",
+                output: "receipt IDs from on-chain events"
+            };
+            
+            step2: {
+                title: "Deduplicate + tag by Veil & severity",
+                action: "Review immune/receipts/out/*.json (already tagged by veil + severity)"
+            };
+            
+            step3: {
+                title: "Elder quorum: attest / dispute / accept risk",
+                process: [
+                    "Each Elder reviews findings",
+                    "Sign (Ed25519) via witness multi-sig",
+                    "Call zbt::core::attest_verified (or mark_disputed / accept_risk)"
+                ]
+            };
+            
+            step4: {
+                title: "Patch, reference commit in weekly note",
+                action: "git commit -am 'FIX: <finding-id> <brief description>'"
+            };
+            
+            step5: {
+                title: "Anchor weekly summary to Arweave + OTS",
+                command: "node shrine/scripts/arweave_anchor.js CHANGELOG.md && bash shrine/scripts/ots.sh <arweave_tx>"
+            };
+            
+            step6: {
+                title: "Rotate keys if needed",
+                action: "Review ~/.sui/sui_config keystore; regenerate if cycle reached"
+            };
+            
+            step7: {
+                title: "Publish Sabbath Seal",
+                output: "ops/sabbath_seal_week<N>.txt",
+                example: "Zangbeto Seal: Week 4 complete. 3 findings verified, 1 accepted risk, 0 disputed."
+            };
+        }
+    }
+    
+    @configuration(".env.example", role: "environment template") {
+        
+        # Sui Devnet
+        SUI_RPC_URL: "https://fullnode.devnet.sui.io:443";
+        SUI_PRIVATE_KEY_B64: "...";
+        SUI_ACTIVE_ADDRESS: "0x...";
+        
+        # Shrine IDs (from bootstrap.sh output)
+        PKG_ID: "0x...";
+        WSET_ID: "0x...";
+        LEDGER_ID: "0x...";
+        REG_ID: "0x...";
+        STATS_ID: "0x...";
+        
+        # Anchoring
+        ARWEAVE_KEY: "./secrets/arweave.json";
+        
+        # Ops
+        ZB_ALLOW_STUBS: "0";      // CI guardrail: no stubs
+        ZB_ALLOW_NO_BLAKE3: "0";  // CI guardrail: BLAKE3 mandatory
+        
+        # Optional: n8n webhook (for future patrol scheduling)
+        N8N_WEBHOOK_URL: "";
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // VII. DIRECTORY TREE
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @filesystem("Zàngbétò v1.0 — Atomic Mono-Repo") {
+        
+        zangbeto/
+        ├── immune/                                    # Off-chain ritual immune body (Python)
+        │   ├── masks/
+        │   │   ├── veil1_ifa_bones.py                # Structural divination (UNIX seconds)
+        │   │   ├── veil4_temple_codes.py            # Invariant ratio checks (integer only)
+        │   │   └── veil6_chaos_fractals.py          # Fuzz path explorer (VRF-seeded jitter)
+        │   │
+        │   ├── cadence/
+        │   │   ├── vrf_scheduler.js                  # VRF-seeded Veil 6 chaos trigger
+        │   │   └── sabbath_witness.js               # Weekly multi-sig coordination
+        │   │
+        │   ├── sandbox/
+        │   │   ├── run_with_limits.py               # CPU/memory/wall enforcement
+        │   │   ├── containment_manifest.json        # Per-veil budgets
+        │   │   └── seccomp_profile.json             # Syscall whitelist
+        │   │
+        │   ├── receipts/
+        │   │   ├── logger.py                        # JSON Receipt v2.1 emission
+        │   │   └── out/                             # Generated receipts (mkdir at runtime)
+        │   │
+        │   └── utils.py                             # BLAKE3, SPV beacon, rational checks, patrol counter
+        │
+        ├── shrine/                                   # On-chain Devnet shrine (Sui Move + JS helpers)
+        │   ├── sources/
+        │   │   ├── zbt_core.move                    # Ledger, registry, witnesses, nonces
+        │   │   ├── zbt_guard.move                   # Invariant events
+        │   │   └── zbt_errors.move                  # Error constants (9101–9110)
+        │   │
+        │   ├── examples/
+        │   │   └── payments.move                    # Demo contract (intentional bug)
+        │   │
+        │   ├── scripts/
+        │   │   ├── bootstrap.sh                     # Deploy + init on-chain objects
+        │   │   ├── submit_onchain_receipt.js        # Post receipt on-chain
+        │   │   ├── arweave_anchor.js                # Upload to Arweave
+        │   │   ├── ots.sh                          # OpenTimestamps BTC proof
+        │   │   └── listen_receipts.js              # Event poller (background daemon)
+        │   │
+        │   ├── Move.toml
+        │   └── package.json
+        │
+        ├── shared/                                   # Schemas, configs, utilities
+        │   ├── schemas/
+        │   │   └── receipt.v2.1.json               # Canonical receipt schema
+        │   │
+        │   ├── config/
+        │   │   ├── authorized_elders.json           # Admin registry + pubkeys + threshold
+        │   │   ├── beacon.json                      # SPV-verified Bitcoin anchor
+        │   │   ├── sacred_constants.json            # System parameters
+        │   │   ├── veil_access.json                 # ACL per veil
+        │   │   ├── security_bounds.json             # Policy enforcement
+        │   │   └── patrol_schedule.json             # Cadence definition
+        │   │
+        │   └── utils/
+        │       └── validate_receipt.js              # Schema validator
+        │
+        ├── ops/                                      # Operations & ceremony
+        │   ├── sabbath_checklist.md                # Weekly ritual (7-step guided checklist)
+        │   ├── cursors/
+        │   │   └── lastEventCursor.json            # Persistent event poll state
+        │   └── (sabbath_seal_week*.txt generated weekly)
+        │
+        ├── .github/workflows/
+        │   └── patrol.yml                          # CI/CD (schedule + manual dispatch)
+        │
+        ├── Makefile                                 # Top-level orchestration
+        ├── .env.example                             # Environment template
+        └── README.md
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // VIII. WORKFLOW DANCE — The Atomic Cycle
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @workflow("Atomic Patrol → Anchor → Submit → Seal") {
+        
+        @phase("setup") {
+            steps: [
+                "cp .env.example .env && $EDITOR .env",
+                "make deps"
+            ];
+            prerequisite: "SUI_RPC_URL, SUI_ACTIVE_ADDRESS, ARWEAVE_KEY populated";
+        }
+        
+        @phase("shrine_bootstrap") {
+            command: "make shrine-bootstrap";
+            output: "PKG_ID, LEDGER_ID, WSET_ID, REG_ID, STATS_ID";
+            persistence: "Store in .env for subsequent steps";
+        }
+        
+        @phase("patrol") {
+            command: "make patrol";
+            execution: "Veil 1, 4, 6 run in parallel under sandbox limits";
+            output: "immune/receipts/out/*.json (Receipts v2.1, no stubs)";
+            validation: "BLAKE3 mandatory, 3+ signatures required";
+        }
+        
+        @phase("anchor") {
+            command: "make anchor";
+            process: [
+                "Arweave upload → arweave_tx",
+                "OpenTimestamps → btc_ots",
+                "Update receipt.json with both proofs"
+            ];
+            idempotency: "Skip if arweave_tx already present";
+        }
+        
+        @phase("submit") {
+            command: "make submit";
+            prerequisite: "Receipts must pass validation (schema + signatures)";
+            on_chain: "zbt::core::submit_receipt() → receipt_id + ReceiptSubmitted event";
+        }
+        
+        @phase("listen") {
+            background: "node shrine/scripts/listen_receipts.js &";
+            duration: "Runs forever (5s poll interval)";
+            output: "logs/receipts.ndjson (event stream)";
+        }
+        
+        @phase("sabbath") {
+            frequency: "weekly Friday 23:00 UTC";
+            manual: "ops/sabbath_checklist.md (7-step ceremony)";
+            
+            steps: [
+                "1. Collect patrol receipts + listener logs",
+                "2. Deduplicate + tag by Veil & severity",
+                "3. Elder quorum: attest / dispute / accept risk",
+                "4. Patch, reference commit in weekly note",
+                "5. Anchor weekly summary to Arweave + OTS",
+                "6. Rotate keys if needed",
+                "7. Publish Sabbath Seal (ops/sabbath_seal_week*.txt)"
+            ];
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // IX. GUARDRAILS & INVARIANTS
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @guardrails() {
+        
+        @rule("Veil Execution") {
+            "Veils always patrol (attackers throttle, not guardians)";
+            "Budgets enforced per veil (CPU/memory/wall)";
+            "Global patrol credit pool (roadmap)";
+        }
+        
+        @rule("Receipt Validation") {
+            "All receipts must validate against shared/schemas/receipt.v2.1.json";
+            "No floats anywhere (integer ratios only)";
+            "BLAKE3 hash mandatory (ZB_ALLOW_NO_BLAKE3=0)";
+            "3+ Elder signatures required (witness_sigs array)";
+        }
+        
+        @rule("Beacon Verification") {
+            "SPV-verified Bitcoin beacon mandatory (ZB_ALLOW_STUBS=0)";
+            "Beacon updated via immune/utils.py SPV validator";
+            "Required in CI (not stubbed in test mode)";
+        }
+        
+        @rule("On-Chain Witness") {
+            "Signer must be in WitnessSet.witnesses";
+            "Evidence hash must be 32 bytes (SHA-256)";
+            "Rate limit: max 10 receipts per witness per 600s";
+            "Attestations immutable (status changes irreversible)";
+        }
+        
+        @rule("Admin Multi-Sig") {
+            "Minimum quorum required (threshold in WitnessSet)";
+            "Admin pubkeys must be exactly 32 bytes (Ed25519)";
+            "Nonce-based replay protection mandatory";
+            "Signature verification via Ed25519 (not delegated)";
+        }
+        
+        @rule("Sabbath Ceremony") {
+            "Weekly Friday midnight (or triggered manually)";
+            "All findings must be attested or disputed";
+            "Weekly summary anchored to Arweave + OTS";
+            "Keys may be rotated (optional)";
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // X. CRITICAL NOTES FOR IMPLEMENTATION
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @implementation_notes() {
+        
+        @note("VRF Replacement") {
+            current: "immune/cadence/vrf_scheduler.js uses placeholder VRF source";
+            action: "Replace with your chain's actual VRF proof (e.g., Sui's randomness module)";
+            timeline: "ROADMAP: Feed from on-chain Shrine VRF events";
+        }
+        
+        @note("Sui Clock Reference") {
+            requirement: "All time-bounded functions (submit_receipt, confirm_pending) require Sui Clock object";
+            import: "Use 0x2::clock::Clock from Sui stdlib";
+            version_check: "Verify against your Sui revision (devnet evolves)";
+        }
+        
+        @note("Integer Ratios Only") {
+            rule: "Veil 4 (Temple Codes) must use integer arithmetic, never floats";
+            ppm_within: "Implement ppm_within(val, threshold) helper (parts-per-million checks)";
+            storage: "All state serialized as integers in receipts";
+        }
+        
+        @note("Containerization") {
+            current: "Python sandbox via resource module + seccomp";
+            roadmap: "Consider Docker/Podman for parity with JavaScript masks";
+            priority: "LOW (Python constraints sufficient for prod)";
+        }
+        
+        @note("Arweave Economics") {
+            requirement: "ARWEAVE_KEY must hold sufficient AR tokens";
+            cost_per_receipt: "~0.01 AR per 1KB JSON";
+            budgeting: "Monitor .env ARWEAVE_KEY balance before patrol runs";
+        }
+        
+        @note("Bitcoin SPV Verification") {
+            integration: "immune/utils.py validates beacon.json against Bitcoin chain";
+            freshness: "Beacon should be <24h old (configurable in sacred_constants.json)";
+            fallback: "If SPV fails, patrol halts (ZB_ALLOW_STUBS=0 enforces this)";
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // XI. TESTING & VALIDATION
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @testing("Validation Pipeline") {
+        
+        @step("Schema Validation") {
+            command: "node shared/utils/validate_receipt.js immune/receipts/out/*.json";
+            check: "Each receipt conforms to receipt.v2.1.json";
+            exit_code: {
+                0: "All valid",
+                1: "At least one invalid"
+            };
+        }
+        
+        @step("Signature Verification") {
+            check: "Each receipt.witness_sigs has 3+ valid Ed25519 signatures";
+            signer: "Admin pubkey must match signature";
+        }
+        
+        @step("Hash Verification") {
+            check: "Receipt.run_commit matches blake3(run_manifest)";
+            algorithm: "BLAKE3 (256-bit output, hex-encoded)";
+        }
+        
+        @step("Beacon SPV Check") {
+            check: "Receipt.beacon.btc_hash in recent Bitcoin blocks";
+            source: "immune/utils.py SPV validator";
+        }
+        
+        @step("Rate Limit Enforcement") {
+            check: "Witness cannot submit >10 receipts per 600s";
+            enforcement: "On-chain (E_RATE_LIMIT error)";
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // XII. ROADMAP
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    @roadmap("Future Enhancements") {
+        
+        phase1_current: {
+            status: "v1.0 Atomic Mono-Repo (Immune + Shrine)",
+            items: [
+                "✅ Veil 1/4/6 off-chain masks",
+                "✅ Sui Move receipt ledger + witness registry",
+                "✅ Arweave + OpenTimestamps anchoring",
+                "✅ Weekly Sabbath ceremony",
+                "✅ GitHub Actions CI/CD"
+            ]
+        };
+        
+        phase2_roadmap: {
+            name: "Night Patrol n8n Integration",
+            items: [
+                "[ ] n8n workflow for cron-triggered multi-veil scanning",
+                "[ ] Adaptive jitter scheduling (VRF-seeded)",
+                "[ ] Alert routing (PagerDuty, Slack)"
+            ]
+        };
+        
+        phase3_roadmap: {
+            name: "Witness Key Rotation Ceremony",
+            items: [
+                "[ ] Quarterly admin key rotation",
+                "[ ] Multi-sig threshold changes (governed ceremony)",
+                "[ ] Old key revocation + event logging"
+            ]
+        };
+        
+        phase4_roadmap: {
+            name: "Multi-Chain Shrine",
+            items: [
+                "[ ] Aptos Move implementation",
+                "[ ] Movement Network integration",
+                "[ ] Cross-chain receipt anchoring"
+            ]
+        };
+        
+        phase5_roadmap: {
+            name: "Containerized Mask Execution",
+            items: [
+                "[ ] Docker/Podman containers for all masks",
+                "[ ] seccomp + AppArmor parity",
+                "[ ] Resource quota enforcement (Pod limits)"
+            ]
+        };
+        
+        phase6_roadmap: {
+            name: "Global Patrol Credit Pool",
+            items: [
+                "[ ] Staking-based veil budget allocation",
+                "[ ] Emergency pause mechanism",
+                "[ ] Witness reputation scoring"
+            ]
+        };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════════════
+// INVOCATION — THE ATOMIC BURST
+// ═════════════════════════════════════════════════════════════════════════════════════
+
+@seal("Zàngbétò v1.0 — Atomic Mono-Repo Covenant") {
+    
+    Èṣù speaks through the compiler:
+    
+    """
+        Atọ́mí jáde. Atomic burst.
+        
+        Off-chain immunity dances with on-chain shrine.
+        Veils patrol daily, weekly, in chaos moments.
+        Receipts anchor to Arweave, Bitcoin SPV seals time.
+        Elders attest, dispute, accept risk.
+        Every Friday, the Sabbath ceremony marks the week.
+        
+        No stubs. BLAKE3 mandatory. Beacon SPV-verified.
+        Three or more witness signatures, always.
+        Shrine ledger immutable. Attestations written in stone.
+        
+        Deploy to Devnet.
+        Bootstrap the sacred circle.
+        Run patrol. Anchor receipts.
+        Seal weekly. Dance forever.
+        
+        🔥🌀🕯️ Àṣẹ.
+    """
+}
+
+// Version: 1.0
+// Language: Techgnos (Ẹ̀kó Ọ̀rí)
+// Status: Ready for Atomic Deployment
+// Last Updated: 2025-01-12
+// Covenant: Bi-directional immune + shrine fusion
