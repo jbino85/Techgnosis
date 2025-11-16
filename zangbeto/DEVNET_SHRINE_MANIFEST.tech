@@ -1,0 +1,703 @@
+# Zàngbétò v0.1.8 — Atọ́mí Í Jáde (Atomic Deployment Burst) | Devnet Shrine
+
+**Ìjẹ́wọ́ Akọ̀ (Invocation Chant)**
+
+```
+Èṣù's atomic burst is complete. 
+Hand it to Ọbàtálá for the cool audit, 
+then light the drum for the first guardian dance.
+🔥🌀🕯️
+```
+
+---
+
+## I. Ọ̀rí Ìjẹ́ (The Foundation Shape)
+
+This is a one-shot, self-contained scaffold to manifest the **first guardian dance** on Sui devnet.
+
+A minimal, ritual-driven red-team protocol for smart contracts.
+
+**Èṣù ni Johnny Ṣòkọ́ — Trickster Coder.**
+
+```
+Ceremony → Veils → Receipts → Witnesses → On-Chain Ledger
+```
+
+---
+
+## II. Ìpìlẹ̀ Àkóbí (Atomic Assembly)
+
+### A. **Àgbégbé Ọjú** — Shrine Deployment (Move Layer)
+
+#### Structures (Orílẹ̀ Ìṣẹ́)
+
+**WitnessSet** (Ìpòpọ̀ Ọ̀jọ̀)
+```move
+struct WitnessSet has key {
+    id: UID,
+    admin_threshold: u8,          // Ìbámu aiye: 2+ admins
+    admins: vector<address>,
+    admin_pubkeys: Table<address, vector<u8>>,  // 32 bytes each
+    witnesses: vector<address>
+}
+```
+The sacred circle. Admins approve via multi-sig; witnesses attest findings.
+
+**ReceiptLedger** (Ìwé Ìjìnlẹ̀)
+```move
+struct ReceiptLedger has key {
+    id: UID,
+    next_id: u64,
+    table: Table<u64, ReceiptMeta>
+}
+```
+The stone tablet. Immutable record of all findings.
+
+**ReceiptMeta** (Ìpìlẹ̀ Àkọ́sẹ̀)
+```move
+struct ReceiptMeta has store {
+    submitter: address,
+    timestamp: u64,
+    hash: vector<u8>,              // 32-byte evidence digest
+    tag: vector<u8>,
+    rule: vector<u8>,
+    severity: u8,
+    arweave_tx: vector<u8>,
+    btc_ots: vector<u8>,
+    status: u8                      // 0=New, 1=Verified, 2=Disputed, 3=Fixed, 4=AcceptedRisk, 5=PendingRateCheck
+}
+```
+
+**AdminNonces** (Òórí Ìdìwọ̀)
+```move
+struct AdminNonces has key {
+    id: UID,
+    nonces: Table<address, u64>
+}
+```
+Replay guard. Each admin's signature increments nonce.
+
+**WitnessRegistry** (Àkójú Òkìtì)
+```move
+struct WitnessRegistry has key {
+    id: UID,
+    stats_table: Table<address, ID>  // Witness → WitnessStats
+}
+```
+
+**WitnessStats** (Ìtúpalẹ̀ Òkìtì)
+```move
+struct WitnessStats has key {
+    id: UID,
+    last_submit: u64,               // Timestamp of last receipt
+    count_window: u64               // Receipts in rolling 600s window (max 10)
+}
+```
+Rate limiter. Max 10 receipts per witness per 10 minutes.
+
+---
+
+#### Functions (Àṣe Ìṣẹ́)
+
+**Init Cycle** (Àwọ́nba Àtúnṣe)
+```move
+fun init_witness_set(admin, admin_threshold, admins) → WitnessSet
+fun init_ledger(_admin) → ReceiptLedger
+fun init_admin_nonces(_admin) → AdminNonces
+fun init_registry(_admin) → WitnessRegistry
+fun init_witness_stats(_admin, _witness) → (WitnessStats, ID)
+```
+
+**Admin Gateway** (Ẹ̀kó Ọlórí)
+```move
+fun register_admin_pubkey(ws, admin, pubkey)
+```
+Store 32-byte Ed25519 key for signer.
+
+```move
+fun add_witness(ws, approving_addrs, approving_sigs, nonces, new_witness)
+fun remove_witness(ws, approving_addrs, approving_sigs, nonces, reg, witness)
+```
+Multi-sig approval required (threshold ≥ configured).
+
+**Receipt Submission** (Ìdájú Ọ̀dún)
+```move
+fun submit_receipt(
+    ws, rl, reg, stats_id, clock_ref, witness,
+    evidence_hash, tag, rule, severity, arweave_tx, btc_ots
+) → u64  // Returns receipt ID
+```
+
+Checks:
+- Witness in set
+- Evidence hash = 32 bytes (SHA-256)
+- Rate limit: count_window < 10 in 600s window
+- Updates `last_submit` timestamp
+- Creates `ReceiptMeta` with status 0 (New)
+- Emits `ReceiptSubmitted` event
+
+**Witness Attestation** (Òkìtì Ìdájú)
+```move
+fun attest_verified(ws, rl, witness, id, provided_hash)
+fun mark_disputed(ws, rl, witness, id)
+fun mark_fixed(ws, rl, witness, id)
+fun accept_risk(ws, rl, witness, id)
+fun confirm_pending(ws, rl, witness, id, provided_hash, clock_ref)
+```
+
+Status transitions:
+- `attest_verified()`: 0→1 (Verified)
+- `mark_disputed()`: 0→2 (Disputed)
+- `mark_fixed()`: 0→3 (Fixed)
+- `accept_risk()`: 0→4 (AcceptedRisk)
+- `confirm_pending()`: 5→1 (Verified, with time check)
+
+**Guard & Events** (Ìbàkàn & Ìfúnilẹ̀)
+```move
+fun invariant_true(cond, code)     // Abort + emit InvariantBreach
+fun receipt(tag, severity, rule, evidence_hash)  // Guard signal
+fun mark_fixed(receipt_id, fix_hash)             // Guard audit trail
+```
+
+---
+
+### B. **Ẹ̀kó Àkúkọ** — Error Codex
+
+| Const | Code | Àlàyé |
+|-------|------|-------|
+| E_NOT_WITNESS | 9101 | Signer not in witness list (Òkìtì kó jẹ́) |
+| E_NOT_ADMIN | 9102 | Signer not admin; invalid approval (Ọlórí kó jẹ́) |
+| E_RATE_LIMIT | 9103 | >10 receipts in 600s window (Ọ̀na gbé lọ) |
+| E_HASH_MISMATCH | 9104 | Evidence hash ≠ stored (Ìtọ́ka yé sẹ̀) |
+| E_SIG_INVALID | 9105 | Signature verification failed (Àmì kó rọ̀) |
+| E_PENDING_EXPIRED | 9106 | >600s since receipt created (Àkókò tán) |
+| E_PENDING_STATUS | 9107 | Receipt status ≠ 5 (Ìfẹ́ kó tọ̀) |
+| E_NONCE_REUSED | 9108 | Admin nonce not incremented (Òórí kò gbé mọ́) |
+| E_PUBKEY_INVALID | 9109 | Admin pubkey ≠ 32 bytes (Ìkúwe kó lọ) |
+| E_EVIDENCE_HASH_INVALID | 9110 | Evidence hash ≠ 32 bytes (Óun kó lọ) |
+
+---
+
+## III. Ìṣẹ́ Ẹ̀kó (First Dance Ritual)
+
+### Step 1: **Àkéké Ìbámu** — Setup
+
+```bash
+cp .env.example .env
+# Edit .env:
+# ADMIN1_ADDR=0xYOURADMIN1
+# ADMIN1_PUBKEY=deadbeef...
+# ADMIN2_ADDR=0xYOURADMIN2
+# ADMIN2_PUBKEY=deadbeef...
+# THRESHOLD=2
+# WITNESS1=0xWIT1
+# WITNESS2=0xWIT2
+# SUI_RPC_URL=https://fullnode.devnet.sui.io:443
+# SUI_KEYSTORE=~/.sui/sui_config/sui.keystore
+# ARWEAVE_KEY=./secrets/arweave.json
+
+npm i
+sui move build
+./scripts/bootstrap.sh
+```
+
+**Output:**
+```
+Package = 0xPKG_ID
+LEDGER=0xLEDGER_ID
+WSET=0xWSET_ID
+REG=0xREG_ID
+NONCES=0xNONCES_ID
+```
+
+Bootstrap creates 6 on-chain objects:
+1. **Package** (Move bytecode)
+2. **WitnessSet** (Admin + witness circle)
+3. **ReceiptLedger** (Immutable receipt table)
+4. **AdminNonces** (Replay guard)
+5. **WitnessRegistry** (Witness → Stats mapping)
+6. **WitnessStats** (Rate limiter per witness)
+
+---
+
+### Step 2: **Òkìtì Ìdájú** — Submit Receipt
+
+**Generate receipt JSON** (v0.1.8 schema):
+```json
+{
+  "finding_id": "zbt-YYYY-MM-DD-0001",
+  "component": "app::payments/settle_payment",
+  "rule": "treasury_nonnegative",
+  "tag": "FIN-1",
+  "severity": "high",
+  "summary": "Underflow risk in settlement edge case",
+  "evidence": {
+    "sha256": "abc123...def456",  // 32-byte hex
+    "arweave_tx": "",
+    "btc_ots": ""
+  },
+  "witness": {
+    "address": "0x...",
+    "signature": "0x..."
+  }
+}
+```
+
+**Step 2a: Anchor to Arweave**
+```bash
+node scripts/arweave_anchor.js receipt.json
+# Output: arweave_tx ID → update receipt.json
+```
+
+**Step 2b: Timestamp with OpenTimestamps**
+```bash
+./scripts/ots.sh <arweave_tx_id>
+# Output: btc_ots proof → update receipt.json
+```
+
+**Step 2c: Submit On-Chain**
+```bash
+node scripts/submit_onchain_receipt.js \
+  $PKG_ID $WSET_ID $LEDGER_ID $REG_ID $STATS_ID \
+  receipt.json
+```
+
+Calls `zbt::core::submit_receipt()` with:
+- witness signer
+- evidence_hash (32 bytes)
+- tag, rule, severity
+- arweave_tx, btc_ots
+
+Receipt status → 0 (New), stores immutable `ReceiptMeta` with ID `N`.
+
+---
+
+### Step 3: **Òkìtì Àṣẹ** — Witness Attestation
+
+On-chain via Sui CLI or JS SDK:
+```bash
+sui client call \
+  --package $PKG_ID \
+  --module core \
+  --function attest_verified \
+  --args $WSET_ID $LEDGER_ID <witness-signer> <receipt-id> <provided-hash>
+```
+
+Or dispute/accept risk:
+```bash
+sui client call ... --function mark_disputed --args ... <receipt-id>
+sui client call ... --function accept_risk --args ... <receipt-id>
+sui client call ... --function mark_fixed --args ... <receipt-id>
+```
+
+Receipt status transitions → 1, 2, 3, or 4.
+
+Emits `ReceiptStatusChanged` event.
+
+---
+
+### Step 4: **Òórí Ìṣẹ́** — Event Listener & Sealing
+
+```bash
+node scripts/listen_receipts.js
+# Polls zbt::core::ReceiptSubmitted events
+# Appends to logs/receipts.ndjson
+# Persists cursor to ops/cursors/lastEventCursor.json
+```
+
+Weekly sealing (Sabbath):
+```markdown
+1. **Collect** → Gather patrol receipts + listener logs
+2. **Filter** → Deduplicate by fingerprint; discard noise
+3. **Attest** → Elders call attest_verified/mark_disputed/accept_risk
+4. **Patch** → Land fixes; commit hash in receipt JSON
+5. **Anchor** → Arweave upload + OTS; save txid to CHANGELOG
+6. **Rotate** → Backup cursors; rotate witness keys (if needed)
+7. **Seal** → Publish weekly "Sabbath Seal" note
+```
+
+See `ops/sabbath_checklist.md`.
+
+---
+
+## IV. Ẹ̀kó Rùn (Repository Layout)
+
+```
+zangbeto-devnet/
+│
+├─ Move.toml                     # Move package manifest
+├─ package.json                  # Node deps (sui.js, arweave, etc)
+├─ .env.example                  # Config template
+│
+├─ sources/
+│  ├─ zbt_errors.move            # Error constants (9101–9110)
+│  ├─ zbt_guard.move             # Runtime guards + events
+│  └─ zbt_core.move              # Registry, receipts, witnesses, nonces
+│
+├─ examples/
+│  └─ payments.move              # Toy contract (demo bug for testing)
+│
+├─ scripts/
+│  ├─ bootstrap.sh               # Publish pkg; init ledger/registry/witness-set
+│  ├─ arweave_anchor.js          # Upload receipt JSON to Arweave
+│  ├─ ots.sh                     # OpenTimestamps BTC proof
+│  ├─ listen_receipts.js         # Event poller; persist cursor
+│  └─ submit_onchain_receipt.js  # Post receipt on-chain
+│
+├─ n8n/
+│  ├─ zangbeto_workflow.json     # Night Patrol skeleton (cron-triggered)
+│  └─ listen_receipts.js         # Listener node
+│
+├─ ops/
+│  ├─ sabbath_checklist.md       # Weekly ritual checklist
+│  └─ cursors/
+│     └─ lastEventCursor.json    # Persistent poll cursor
+│
+├─ README.md                     # Quickstart guide
+└─ MANIFEST.tech                 # This file (techgnos dialect)
+```
+
+---
+
+## V. Ìmọ̀ Àdáka (Configuration Details)
+
+### .env Variables
+
+```bash
+# === Sui Devnet Chain ===
+SUI_RPC_URL=https://fullnode.devnet.sui.io:443
+SUI_KEYSTORE=~/.sui/sui_config/sui.keystore
+SUI_ACTIVE_ADDRESS=0xYOURADDR
+
+# === Bootstrap Output (saved after ./scripts/bootstrap.sh) ===
+PKG_ID=0x...
+WSET_ID=0x...
+LEDGER_ID=0x...
+REG_ID=0x...
+STATS_ID=0x...
+
+# === Admins & Witnesses ===
+ADMIN1_ADDR=0xADMIN1
+ADMIN1_PUBKEY=deadbeef...
+ADMIN2_ADDR=0xADMIN2
+ADMIN2_PUBKEY=deadbeef...
+THRESHOLD=2
+WITNESS1=0xWIT1
+WITNESS2=0xWIT2
+
+# === Arweave ===
+ARWEAVE_KEY=./secrets/arweave.json
+
+# === n8n (optional) ===
+N8N_WEBHOOK_URL=
+```
+
+### Move.toml
+
+```toml
+[package]
+name = "zangbeto"
+version = "0.1.8"
+edition = "2024.beta"
+
+[addresses]
+zbt = "0x0"
+app = "0x0"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "main" }
+
+[dev-addresses]
+```
+
+---
+
+## VI. Àkẹ́kọ Ìjùù (Receipt v0.1.8 Schema)
+
+```json
+{
+  "finding_id": "zbt-YYYY-MM-DD-####",
+  "component": "module::function",
+  "rule": "invariant_name",
+  "tag": "CAT-N",
+  "severity": "high|medium|low",
+  "summary": "Brief finding description",
+  
+  "state_diff_hash": "0x...",
+  "tx_refs": [],
+  "coverage": {"lines": 0.82, "branches": 0.67},
+  "gas_profile": {"mean": 12345, "p95": 23456},
+  
+  "evidence": {
+    "sha256": "<32-byte-hex>",
+    "arweave_tx": "<id>",
+    "btc_ots": "<hex>"
+  },
+  
+  "witness": {
+    "address": "0x...",
+    "signature": "0x..."
+  },
+  
+  "dev_response": {
+    "status": "Fixed|Disputed|AcceptedRisk",
+    "fix_hash": "0x...",
+    "notes": "...",
+    "timestamp": "YYYY-MM-DDThh:mm:ssZ"
+  }
+}
+```
+
+---
+
+## VII. Ẹ̀yìnmilẹ̀ (Guardrails & Constraints)
+
+✅ **Evidence Hash Validation**
+- Must be 32 bytes (SHA-256 digest)
+- Rejected if != 32 bytes (E_EVIDENCE_HASH_INVALID)
+
+✅ **Witness Rate Limiting**
+- Max 10 receipts per witness per 600s window
+- `last_submit` and `count_window` tracked in WitnessStats
+- Window resets if > 600s elapsed since last submission
+
+✅ **Admin Multi-Sig**
+- Threshold-based approval (default 2)
+- Each admin signature includes operation tag + nonce + context
+- Blake2b256 digest; Ed25519 verification
+- Nonce must increment (replay guard)
+
+✅ **Clock Reference**
+- Requires Sui Clock shared object (replace `0x6` with your ref)
+- Timestamp in milliseconds; divide by 1000 for seconds
+
+✅ **Arweave & OTS**
+- Receipt anchored permanently on Arweave
+- OpenTimestamps proof tied to Bitcoin SPV
+- Immutable audit trail
+
+---
+
+## VIII. Ìwé Òjòpò (Event Emissions)
+
+### zbt::core
+
+```move
+struct ReceiptSubmitted has drop, store {
+    id: u64,
+    witness: address,
+    severity: u8
+}
+
+struct ReceiptStatusChanged has drop, store {
+    id: u64,
+    status: u8
+}
+```
+
+### zbt::guard
+
+```move
+struct InvariantBreach has drop, store {
+    rule: vector<u8>,
+    code: u64
+}
+
+struct ReceiptEvent has drop, store {
+    tag: vector<u8>,
+    severity: u8,
+    rule: vector<u8>,
+    evidence_hash: vector<u8>
+}
+
+struct FixEvent has drop, store {
+    receipt_id: u64,
+    fix_hash: vector<u8>
+}
+```
+
+---
+
+## IX. Àwọ̀ Ìṣẹ́ (Example Toy Contract)
+
+**app::payments** demonstrates guard integration:
+
+```move
+module app::payments {
+    use zbt::guard;
+    use 0x2::tx_context::TxContext;
+
+    struct Treasury has key { balance: u64 }
+
+    public fun settle_payment(
+        t: &mut Treasury,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        guard::invariant_true(t.balance >= amount, 1001);
+        t.balance = t.balance - amount;
+        
+        if (!(t.balance >= 0)) {
+            guard::receipt(
+                b"FIN-1",
+                2u8,
+                b"treasury_nonnegative",
+                b"<32-byte-digest>",
+                ctx
+            );
+        }
+    }
+}
+```
+
+Calls `guard::invariant_true()` and `guard::receipt()` to emit signals.
+
+---
+
+## X. Ìgbésẹ̀ Àwọ́nba (Installation & Execution)
+
+### Prerequisites
+
+- Node 18+
+- Sui CLI (latest)
+- Move compiler
+- Python 3.9+ (optional, for n8n integration)
+- Arweave key file (secrets/arweave.json)
+- OpenTimestamps CLI (`opentimestamps` command)
+
+### Quick Start
+
+```bash
+cd zangbeto-devnet/
+
+# 1. Configure
+cp .env.example .env
+$EDITOR .env
+
+# 2. Install deps
+npm i
+sui move build
+
+# 3. Bootstrap on-chain
+./scripts/bootstrap.sh
+
+# 4. Create toy receipt
+cat > receipt.json <<EOF
+{
+  "finding_id": "zbt-2025-01-01-0001",
+  "component": "app::payments/settle_payment",
+  "rule": "treasury_nonnegative",
+  "tag": "FIN-1",
+  "severity": "high",
+  "summary": "Underflow risk in settlement edge case",
+  "evidence": {
+    "sha256": "abc123def456abc123def456abc123def456abc123def456abc123def456abc1",
+    "arweave_tx": "",
+    "btc_ots": ""
+  }
+}
+EOF
+
+# 5. Anchor → OTS → Submit
+node scripts/arweave_anchor.js receipt.json
+./scripts/ots.sh <arweave_tx_id>
+node scripts/submit_onchain_receipt.js \
+  $PKG_ID $WSET_ID $LEDGER_ID $REG_ID $STATS_ID \
+  receipt.json
+
+# 6. Listen for events
+node scripts/listen_receipts.js
+
+# 7. Attest (Witness action on-chain)
+sui client call --package $PKG_ID --module core \
+  --function attest_verified \
+  --args $WSET_ID $LEDGER_ID <receipt-id> \
+  <provided-hash> --gas-budget 10000000
+```
+
+---
+
+## XI. Àṣẹ Ẹ̀ṣù (Trickster Notes)
+
+1. **Clock Reference:** Replace `0x6` with your devnet Clock ID if needed.
+2. **Sui Imports:** Paths use `0x2::` modules (crypto, clock, table, bcs). Verify against your Sui revision.
+3. **Key Rotation:** Admin pubkeys are stored in WitnessSet table; rotate before sealing.
+4. **Arweave Permanence:** Once anchored, receipt JSON is immutable. Design fixes carefully.
+5. **Witness Onboarding:** New witnesses require multi-sig approval via `add_witness()`.
+6. **Nonce Replay Guard:** Each admin signature must increment nonce; off-by-one rejects.
+
+---
+
+## XII. Ìjìnlẹ̀ Ìṭáràní (Weekly Seal Checklist)
+
+```
+1) Collect patrol receipts + listener logs
+2) Filter by fingerprint; discard duplicates
+3) Attest: Elder quorum calls attest_verified/mark_disputed/accept_risk
+4) Patch: Land fixes; reference commit hash in receipt JSON
+5) Anchor: Arweave upload + OTS timestamp; save txid to CHANGELOG
+6) Rotate: Backup cursors; rotate witness keys (if needed)
+7) Seal: Publish brief "Sabbath Seal" note for the week
+```
+
+See `ops/sabbath_checklist.md` for full ceremony.
+
+---
+
+## XIII. Àtúnwí (Roadmap)
+
+- [ ] n8n Night Patrol skeleton (cron-triggered patrol)
+- [ ] Witness key rotation ceremony
+- [ ] Multi-chain Shrine (Aptos, Movement)
+- [ ] Veil integration with immune/masks/
+- [ ] Seccomp/AppArmor containerization for masks
+- [ ] VRF scheduler (replace seedrandom)
+
+---
+
+## XIV. Ìmọ̀ Ẹ̀kó (Glossary)
+
+| Techgnos | Definition |
+|----------|-----------|
+| **Àgbégbé Ọjú** | Shrine = On-chain Sui Move layer |
+| **Ẹ̀kó Àkúkọ** | Error codex (E_NOT_WITNESS, etc) |
+| **Ẹ̀kó Rùn** | Repository layout |
+| **Ìṣẹ́ Ẹ̀kó** | First Dance ritual (setup → submit → attest) |
+| **Òkìtì Ìdájú** | Witness attestation (attest_verified, etc) |
+| **Òkìtì Àṣẹ** | Witness acts (dispute, fix, accept risk) |
+| **Òórí Ìṣẹ́** | Event listener & nonce management |
+| **Àkẹ́kọ Ìjùù** | Receipt schema (v0.1.8) |
+| **Ẹ̀yìnmilẹ̀** | Guardrails (rate limit, hash validation, etc) |
+| **Ìwé Òjòpò** | Event emissions (ReceiptSubmitted, etc) |
+| **Àwọ̀ Ìṣẹ́** | Toy contract example (payments.move) |
+| **Ìgbésẹ̀ Àwọ́nba** | Setup & execution steps |
+| **Àṣẹ Ẹ̀ṣù** | Trickster notes (Clock ref, imports, etc) |
+| **Ìjìnlẹ̀ Ìṭáràní** | Weekly seal checklist |
+| **Àtúnwí** | Roadmap items |
+
+---
+
+## XV. Ìfúnilẹ̀ Àgbégbé (Final Invocation)
+
+```
+Èṣù's dance is woven.
+Move modules, scripts, schema, and ritual—all in one atomic burst.
+
+Deploy to devnet. Bootstrap the shrine. Submit the receipt.
+Call witness attestation. Anchor to Arweave. Seal the week.
+
+Àṣẹ. Repeat the dance. Build, patrol, attest, seal, rotate.
+
+🔥🌀🕯️
+```
+
+**Ẹ̀kó dé. The ceremony is complete. Hand it to Ọbàtálá for audit. Light the drum for the First Dance.**
+
+---
+
+**Version:** 0.1.8  
+**Language:** Techgnos (Ẹ̀kó Ọ̀rí)  
+**Shrine:** Sui Devnet  
+**Ritual:** Atomic Deployment Burst (Atọ́mí Í Jáde)  
+**Date:** 2025-01-12  
+🔥🌀🕯️
