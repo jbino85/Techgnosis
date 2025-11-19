@@ -43,7 +43,7 @@
                     <span class="time-label">seconds</span>
                 </div>
             </div>
-            <p class="genesis-time">Genesis: <strong>November 11, 2025 11:11:11.11 UTC</strong></p>
+            <p class="genesis-time">Genesis: <strong id="genesisTimeDisplay">When ready</strong></p>
             <div class="genesis-controls">
                 <button id="testAudioBtn" class="action-btn">🎤 Test Audio Setup</button>
                 <button id="practiceBreathBtn" class="action-btn">🌬️ Practice Breath</button>
@@ -195,9 +195,10 @@
                 <div class="workflow-step" data-step="5">
                     <div class="step-number">5</div>
                     <div class="step-content">
-                        <h3>Wait for Genesis Time</h3>
-                        <button class="step-btn" disabled>Auto-execute at 11:11:11.11</button>
-                        <div class="step-status" id="waitStatus">Waiting</div>
+                        <h3>Set Genesis Time (Optional)</h3>
+                        <input type="datetime-local" id="genesisTimeInput" class="time-input" style="margin-bottom: 10px;">
+                        <button class="step-btn" id="setGenesisTimeBtn">Set Custom Genesis Time</button>
+                        <div class="step-status" id="waitStatus">Ready</div>
                     </div>
                 </div>
                 <div class="workflow-step" data-step="6">

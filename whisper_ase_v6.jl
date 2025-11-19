@@ -1,50 +1,53 @@
 # whisper_ase_v6.jl — GENESIS RUNTIME
-# RUN ON FOLD V7 AT GENESIS MOMENT
 # Crown Architect: Bínò ÈL Guà Ọmọ Kọ́dà Àṣẹ
-# Genesis: November 11, 2025, 11:11:11.11 UTC
 
 using Dates, HTTP, JSON3, SHA
 
 # CONSTANTS
-const GENESIS_TIME = DateTime("2025-11-11T11:11:11.110", "yyyy-mm-ddTHH:MM:SS.sss")
 const WHISPER = "Èmi ni Bínò ÈL Guà Ọmọ Kọ́dà Àṣẹ"
 const WORLD_ID = "world.id/bino.1111"
-const RECEIPT_DATA = "$WHISPER|$WORLD_ID|$GENESIS_TIME"
 
-println("════════════════════════════════════════════════════════════")
-println("🤍🗿⚖️🕊️🌄 ỌBÀTÁLÁ GENESIS RUNTIME")
-println("════════════════════════════════════════════════════════════")
-println()
+# Genesis time will be set at runtime
+GENESIS_TIME = nothing
 
-# 1. PRECISION TIMING
-println("⏳ Awaiting Genesis: $GENESIS_TIME")
-println("⏳ Current Time: $(now(UTC))")
+function execute_genesis(genesis_time::DateTime)
+    global GENESIS_TIME = genesis_time
+    RECEIPT_DATA = "$WHISPER|$WORLD_ID|$GENESIS_TIME"
 
-remaining = GENESIS_TIME - now(UTC)
-println("⏳ Time Remaining: $(Dates.canonicalize(remaining))")
-println()
+    println("════════════════════════════════════════════════════════════")
+    println("🤍🗿⚖️🕊️🌄 ỌBÀTÁLÁ GENESIS RUNTIME")
+    println("════════════════════════════════════════════════════════════")
+    println()
 
-# Sleep until 100ms before genesis
-while now(UTC) < GENESIS_TIME - Millisecond(100)
-    sleep(0.01)
-end
+    # 1. PRECISION TIMING
+    println("⏳ Awaiting Genesis: $GENESIS_TIME")
+    println("⏳ Current Time: $(now(UTC))")
 
-# Busy-wait for exact moment
-while now(UTC) < GENESIS_TIME end
+    remaining = GENESIS_TIME - now(UTC)
+    println("⏳ Time Remaining: $(Dates.canonicalize(remaining))")
+    println()
 
-actual_time = now(UTC)
-drift = (actual_time - GENESIS_TIME).value
+    # Sleep until 100ms before genesis
+    while now(UTC) < GENESIS_TIME - Millisecond(100)
+        sleep(0.01)
+    end
 
-println("✅ Genesis Reached!")
-println("   Actual Time: $actual_time")
-println("   Drift: $(drift)ms")
+    # Busy-wait for exact moment
+    while now(UTC) < GENESIS_TIME end
 
-if abs(drift) > 50
-    @warn "Drift exceeds 50ms: $(drift)ms"
-else
-    println("   ✅ Within acceptable drift (<50ms)")
-end
-println()
+    actual_time = now(UTC)
+    drift = (actual_time - GENESIS_TIME).value
+
+    println("✅ Genesis Reached!")
+    println("   Actual Time: $actual_time")
+    println("   Drift: $(drift)ms")
+
+    if abs(drift) > 50
+        @warn "Drift exceeds 50ms: $(drift)ms"
+    else
+        println("   ✅ Within acceptable drift (<50ms)")
+    end
+    println()
 
 # 2. BREATH + WHISPER CAPTURE
 println("🌬️  Capturing breath + whisper...")

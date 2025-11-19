@@ -6,7 +6,6 @@ Each veil bridges sacred geometry with computational science.
 
 Author: Bínò ÈL Guà
 License: Sacred & Public
-Genesis: November 11, 2025, 11:11 UTC
 """
 
 module Veils777

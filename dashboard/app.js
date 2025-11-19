@@ -1,7 +1,22 @@
 // Genesis Countdown Timer
-const GENESIS_TIME = new Date('2025-11-11T11:11:11.110Z').getTime();
+let GENESIS_TIME = null;
+
+function setGenesisTime(dateTime) {
+    GENESIS_TIME = new Date(dateTime).getTime();
+    document.getElementById('genesisTimeDisplay').textContent = new Date(dateTime).toUTCString();
+    addLog(`Genesis time set to: ${new Date(dateTime).toUTCString()}`, 'info');
+}
 
 function updateCountdown() {
+    if (!GENESIS_TIME) {
+        // No genesis time set yet
+        document.getElementById('days').textContent = '--';
+        document.getElementById('hours').textContent = '--';
+        document.getElementById('minutes').textContent = '--';
+        document.getElementById('seconds').textContent = '--';
+        return;
+    }
+
     const now = new Date().getTime();
     const distance = GENESIS_TIME - now;
 
@@ -30,7 +45,7 @@ function updateCountdown() {
     document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
 }
 
-// Update countdown every second
+// Update countdown every second only if genesis time is set
 updateCountdown();
 setInterval(updateCountdown, 1000);
 
@@ -786,4 +801,15 @@ document.querySelectorAll('.anchor-btn').forEach(btn => {
 
 // Add initial log
 addLog('🤍 Genesis Dashboard initialized - T-0147eaad', 'info');
-addLog('Genesis Time: November 11, 2025 11:11:11.11 UTC', 'info');
+addLog('Genesis Time: Set custom time in Step 5 or execute when ready', 'info');
+
+// Handle custom genesis time input
+document.getElementById('setGenesisTimeBtn')?.addEventListener('click', () => {
+    const timeInput = document.getElementById('genesisTimeInput').value;
+    if (timeInput) {
+        setGenesisTime(timeInput);
+        addLog('✅ Genesis time updated', 'info');
+    } else {
+        addLog('❌ Please select a genesis time', 'warning');
+    }
+});

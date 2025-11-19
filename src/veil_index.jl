@@ -179,7 +179,7 @@ function export_veil_json(filename::String = "veils_777.json")::String
         "metadata" => Dict(
             "total_veils" => total_veil_count(),
             "tiers" => length(get_veil_categories()),
-            "genesis_time" => "2025-11-11T11:11:00Z",
+            "exported_at" => string(now()),
             "description" => "The 777 Sacred-Scientific Veils of Ọbàtálá"
         ),
         "veils" => veils_data
