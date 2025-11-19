@@ -1,0 +1,219 @@
+# Move Prover Configuration for Techgnosis Smart Contracts
+# Formal verification specifications using Z3 solver
+
+[options]
+# Verbosity level
+verbosity = 2
+
+# Maximum number of iterations in fixed-point loops
+max_iterations = 100
+
+# Timeout for Z3 solver (seconds)
+timeout = 120
+
+# Check the specifications marked in the code
+check_specs = true
+
+# Print debug information
+debug = false
+
+[targets]
+# Target modules to verify
+modules = ["ase", "governance", "veilsim_integration", "proof_of_witness", "tokenomics_invariants"]
+
+[invariants]
+# Global invariants that must hold throughout execution
+
+# INV-1: Total supply never exceeds 2,880 Àṣẹ
+"total_supply_bounded" = "governor.total_minted <= 2_880_000_000_000"
+
+# INV-2: Tithe split preserves sum
+"tithe_conservation" = "(shrine + inheritance + aio + burn) == tithe_amount"
+
+# INV-3: Inheritance APY compounds correctly
+"apy_monotonic" = "balance_final >= balance_initial"
+
+# INV-4: Halving schedule is correct
+"halving_schedule" = "get_halving_value(n) == TOTAL_SUPPLY / 2^n"
+
+# INV-5: Vault balances never negative
+"vault_non_negative" = "vault.balance >= 0"
+
+# INV-6: Nonce strictly increases
+"nonce_monotonic" = "nonce_n > nonce_{n-1}"
+
+[specifications]
+# Function-level specifications (pre/post conditions)
+
+# ase::mint_impact
+[[ase_mint_impact]]
+precondition = """
+  !is_sabbath(ctx) && 
+  governor.total_minted + amount <= TOTAL_SUPPLY
+"""
+postcondition = """
+  governor.total_minted == old(governor.total_minted) + amount &&
+  (amount - tithe_amount) == coin_value
+"""
+aborts_if = "is_sabbath(ctx) || governor.total_minted + amount > TOTAL_SUPPLY"
+
+# ase::create_inheritance_vault
+[[ase_create_inheritance_vault]]
+precondition = "wallet_id >= 1 && wallet_id <= 1440"
+postcondition = "vault.wallet_id == wallet_id && vault.balance == 0"
+aborts_if = "wallet_id < 1 || wallet_id > 1440"
+
+# ase::accrue_apy
+[[ase_accrue_apy]]
+precondition = "vault.balance >= 0"
+postcondition = """
+  new_balance >= old(vault.balance) &&
+  (new_balance - old(vault.balance)) == 
+    (vault.balance * INHERITANCE_APY * time_elapsed) / (10_000 * SECONDS_PER_YEAR)
+"""
+aborts_if = false
+
+# governance::create_proposal
+[[governance_create_proposal]]
+precondition = """
+  vec_set::contains(gov.council_members, proposer) &&
+  proposal_data.length <= MAX_PROPOSAL_SIZE
+"""
+postcondition = """
+  proposal.id == gov.next_proposal_id - 1 &&
+  proposal.timelock_release_at == proposal.created_at + TIMELOCK_DURATION &&
+  !proposal.executed
+"""
+aborts_if = """
+  !vec_set::contains(gov.council_members, proposer) ||
+  proposal_data.length > MAX_PROPOSAL_SIZE
+"""
+
+# governance::vote
+[[governance_vote]]
+precondition = """
+  vec_set::contains(gov.council_members, voter) &&
+  !proposal.executed &&
+  !vec_set::contains(proposal.votes_cast, voter)
+"""
+postcondition = """
+  proposal.votes_for == old(proposal.votes_for) + (if in_favor then 1 else 0) &&
+  proposal.votes_against == old(proposal.votes_against) + (if !in_favor then 1 else 0) &&
+  vec_set::contains(proposal.votes_cast, voter)
+"""
+aborts_if = """
+  !vec_set::contains(gov.council_members, voter) ||
+  proposal.executed ||
+  vec_set::contains(proposal.votes_cast, voter)
+"""
+
+# governance::execute_proposal
+[[governance_execute_proposal]]
+precondition = """
+  !proposal.executed &&
+  tx_context::epoch(ctx) >= proposal.timelock_release_at &&
+  proposal.bino_signed &&
+  proposal.votes_for >= gov.quorum_threshold
+"""
+postcondition = "proposal.executed"
+aborts_if = """
+  proposal.executed ||
+  tx_context::epoch(ctx) < proposal.timelock_release_at ||
+  !proposal.bino_signed ||
+  proposal.votes_for < gov.quorum_threshold
+"""
+
+# veilsim_integration::submit_veil_proof
+[[veilsim_submit_veil_proof]]
+precondition = """
+  proof.f1_score > VEILSIM_F1_THRESHOLD &&
+  proof.witness_signatures.length >= oracle.min_witnesses
+"""
+postcondition = """
+  registry.total_veils == old(registry.total_veils) + 1 &&
+  registry.total_rewards_distributed == 
+    old(registry.total_rewards_distributed) + VEILSIM_REWARD
+"""
+aborts_if = """
+  proof.f1_score <= VEILSIM_F1_THRESHOLD ||
+  proof.witness_signatures.length < oracle.min_witnesses
+"""
+
+# proof_of_witness::validate_attestation
+[[pow_validate_attestation]]
+precondition = """
+  !attestation.validated &&
+  attestation.witnesses.length >= WITNESS_QUORUM
+"""
+postcondition = """
+  attestation.validated &&
+  oracle.total_rewards_distributed == 
+    old(oracle.total_rewards_distributed) + SENSOR_REWARD
+"""
+aborts_if = """
+  attestation.validated ||
+  attestation.witnesses.length < WITNESS_QUORUM
+"""
+
+[properties]
+# Properties to verify
+
+# P1: Supply never exceeds cap
+supply_cap = """
+  forall tx in transaction_history:
+    governor.total_minted <= TOTAL_SUPPLY
+"""
+
+# P2: Tithe split is always valid
+tithe_split = """
+  forall tithe_event in tithe_splits:
+    shrine + inheritance + aio + burn == tithe_event.amount
+"""
+
+# P3: APY is monotonically increasing
+apy_growth = """
+  forall vault, t1, t2 in time where t2 > t1:
+    balance(vault, t2) >= balance(vault, t1)
+"""
+
+# P4: Halving schedule is followed
+halving = """
+  forall n in halving_sequence:
+    supply(n) == TOTAL_SUPPLY / 2^n
+"""
+
+# P5: Governance voting respects quorum
+governance_quorum = """
+  forall proposal in proposals:
+    proposal.executed => proposal.votes_for >= QUORUM_THRESHOLD
+"""
+
+# P6: Timelock is enforced
+timelock = """
+  forall proposal in proposals:
+    proposal.executed => current_epoch >= proposal.timelock_release_at
+"""
+
+# P7: Bínò signature is required
+bino_signature = """
+  forall proposal in proposals:
+    proposal.executed => proposal.bino_signed
+"""
+
+# P8: Witness quorum is enforced
+witness_quorum = """
+  forall attestation in attestations:
+    attestation.validated => attestation.witnesses.length >= 5
+"""
+
+# P9: No replay attacks via nonces
+replay_protection = """
+  forall address, tx1, tx2 where tx1 happens_before tx2:
+    nonce(address, tx2) > nonce(address, tx1)
+"""
+
+# P10: F1-score threshold respected
+veilsim_threshold = """
+  forall veil_proof in veil_proofs:
+    reward_minted(veil_proof) => veil_proof.f1_score > 0.9
+"""
